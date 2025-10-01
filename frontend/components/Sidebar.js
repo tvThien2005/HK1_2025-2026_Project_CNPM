@@ -16,6 +16,10 @@ import {
 } from "react-icons/fa"; // Import icons
 
 const Sidebar = () => {
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    router.push("/sign-in");
+  };
   return (
     <div
       className="bg-dark text-white p-4"
@@ -103,6 +107,16 @@ const Sidebar = () => {
             <FaBell className="me-2" /> Gửi thông báo
           </NavLink>
         </NavItem>
+        {/* <div className="mt-auto pt-3 border-top">
+          <Nav.Link
+            className="text-white"
+            onClick={handleLogout}
+            style={{ cursor: "pointer" }}
+          >
+            <i className="bi bi-box-arrow-right me-2"></i>
+            Đăng xuất
+          </Nav.Link>
+        </div> */}
       </Nav>
     </div>
   );

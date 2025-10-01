@@ -31,8 +31,11 @@ const UsersPage = () => {
                 <Button variant="warning" size="sm" className="me-2">
                   Sửa
                 </Button>
-                <Button variant="danger" size="sm">
+                <Button variant="danger" size="sm" className="me-2">
                   Xóa
+                </Button>
+                <Button variant="success" size="sm">
+                  Khóa
                 </Button>
               </td>
             </tr>
@@ -43,8 +46,11 @@ const UsersPage = () => {
                 <Button variant="warning" size="sm" className="me-2">
                   Sửa
                 </Button>
-                <Button variant="danger" size="sm">
+                <Button variant="danger" size="sm" className="me-2">
                   Xóa
+                </Button>
+                <Button variant="success" size="sm">
+                  Khóa
                 </Button>
               </td>
             </tr>

@@ -192,7 +192,7 @@ export default function StudentManagerPage() {
     <Container className="py-4">
       <Row className="mb-3 align-items-center">
         <Col xs={12} md={4} className="mb-2 mb-md-0">
-          <h4>Quản lý học sinh</h4>
+          <h1 className="my-4">Quản lý học sinh</h1>
         </Col>
         <Col xs={12} md={5}>
           <InputGroup>
