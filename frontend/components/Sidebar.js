@@ -23,7 +23,7 @@ const Sidebar = () => {
   return (
     <div
       className="bg-dark text-white p-4"
-      style={{ minHeight: "100vh", width: "100%" }}
+      style={{ height: "100%", width: "100%" }}
     >
       <div className="d-flex align-items-center mb-4">
         <FaTachometerAlt size={30} className="me-3" />

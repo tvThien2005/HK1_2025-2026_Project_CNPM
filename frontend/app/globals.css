@@ -55,3 +55,11 @@ body {
   background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
   color: white;
 }
+.navbar .dropdown-toggle::after {
+  display: none !important;
+}
+.table-container {
+  border-radius: 10px;
+  overflow: hidden;
+  /* box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05); */
+}
