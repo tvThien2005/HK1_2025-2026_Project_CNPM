@@ -53,7 +53,7 @@ const Header = () => {
 
                 <Dropdown.Divider />
 
-                <NavDropdown.Item href="#logout">
+                <NavDropdown.Item href="sign-in">
                   <Button variant="warning" className="w-100 text-start">
                     <span className="d-flex align-items-center">
                       <FaSignOutAlt className="me-2" />

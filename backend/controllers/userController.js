@@ -91,6 +91,33 @@ const unblockUser = (req, res) => {
     res.json({ message: "Tài khoản đã được mở khóa" });
   });
 };
+// Đăng nhập
+const login = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu",
+      });
+    }
+
+    const user = await userService.loginUser(username, password);
+
+    res.json({
+      success: true,
+      message: "Đăng nhập thành công",
+      user: user,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi đăng nhập:", error.message);
+    res.status(401).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 module.exports = {
   getUsers,
@@ -99,4 +126,5 @@ module.exports = {
   editUser,
   blockUser,
   unblockUser,
+  login,
 };

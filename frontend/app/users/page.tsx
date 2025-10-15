@@ -284,12 +284,12 @@ const UsersPage = () => {
           </Col>
         </Row>
         <div className="table-container">
-          <Table striped bordered hover className="shadow-sm">
+          <Table striped bordered hover className="shadow-sm text-center">
             <thead>
               <tr>
                 <th>Mã TK</th>
                 <th>Tên đăng nhập</th>
-                <th>mật khẩu</th>
+                <th>Mật khẩu</th>
                 <th>Ngày tạo</th>
                 <th>Vai trò</th>
                 <th>Trạng thái</th>

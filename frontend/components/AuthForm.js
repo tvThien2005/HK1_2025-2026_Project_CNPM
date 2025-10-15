@@ -1,9 +1,19 @@
-// frontend/components/AuthForm.js
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, Form, Button, Container, Row, Col } from "react-bootstrap";
+import {
+  Card,
+  Form,
+  Button,
+  Container,
+  Row,
+  Col,
+  InputGroup,
+} from "react-bootstrap";
+import { Eye, EyeSlash } from "react-bootstrap-icons"; // Import icons
+
+const API_URL = "http://localhost:5000/api/users"; // Khai báo URL cơ sở của API
 
 export default function AuthForm({ mode = "signin" }) {
   const [formData, setFormData] = useState({
@@ -15,27 +25,72 @@ export default function AuthForm({ mode = "signin" }) {
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false); // State cho mật khẩu chính
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // State cho xác nhận mật khẩu
   const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
-    // Kiểm tra mật khẩu xác nhận (chỉ cho đăng ký)
     if (mode === "signup" && formData.password !== formData.confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
+      setError("Mật khẩu xác nhận không khớp!");
       setIsLoading(false);
       return;
     }
 
-    setTimeout(() => {
-      localStorage.setItem("isLoggedIn", "true");
-      alert(
-        mode === "signin" ? "Đăng nhập thành công!" : "Đăng ký thành công!"
-      );
-      router.push("/");
+    try {
+      const endpoint = mode === "signin" ? "/login" : "/register";
+      const url = `${API_URL}${endpoint}`;
+
+      const payload = {
+        username: formData.username,
+        password: formData.password,
+      };
+
+      if (mode === "signup") {
+        payload.email = formData.email;
+        payload.fullName = formData.fullName;
+        payload.phone = formData.phone;
+      }
+
+      console.log("📤 Gửi request đến:", url);
+      console.log("📦 Payload:", payload);
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      console.log("📥 Response từ server:", data);
+      console.log("🔍 Response status:", response.status);
+
+      if (response.ok && data.success) {
+        // Đăng nhập/Đăng ký thành công
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("isLoggedIn", "true"); // Thêm dòng này
+
+        console.log("✅ Lưu vào localStorage thành công");
+        console.log("👤 User data:", data.user);
+
+        alert(`Thành công: ${data.message}`);
+        router.push("/");
+      } else {
+        setError(data.message || "Lỗi không xác định từ server.");
+      }
+    } catch (err) {
+      console.error("❌ Lỗi Network/Fetch:", err);
+      setError("Không thể kết nối đến server. Vui lòng thử lại sau.");
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleChange = (e) => {
@@ -43,6 +98,16 @@ export default function AuthForm({ mode = "signin" }) {
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  // Hàm toggle hiển thị mật khẩu chính
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  // Hàm toggle hiển thị xác nhận mật khẩu
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
   };
 
   const title = mode === "signin" ? "ĐĂNG NHẬP" : "ĐĂNG KÝ TÀI KHOẢN";
@@ -74,6 +139,16 @@ export default function AuthForm({ mode = "signin" }) {
                 <h4 className="fw-bold text-dark mb-2">{title}</h4>
                 <p className="text-muted mb-0">{description}</p>
               </div>
+
+              {/* Hiển thị lỗi */}
+              {error && (
+                <div
+                  className="alert alert-danger text-center p-2 mb-3"
+                  role="alert"
+                >
+                  {error}
+                </div>
+              )}
 
               <Form onSubmit={handleSubmit}>
                 {/* Các trường chỉ hiển thị khi đăng ký */}
@@ -141,37 +216,61 @@ export default function AuthForm({ mode = "signin" }) {
                   />
                 </Form.Group>
 
-                {/* Mật khẩu */}
+                {/* Mật khẩu với toggle visibility */}
                 <Form.Group className="mb-3">
                   <Form.Label className="fw-medium text-dark">
                     Mật khẩu
                   </Form.Label>
-                  <Form.Control
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Nhập mật khẩu"
-                    required
-                    className="py-2"
-                  />
+                  <InputGroup>
+                    <Form.Control
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Nhập mật khẩu"
+                      required
+                      className="py-2"
+                    />
+                    <Button
+                      variant="outline-secondary"
+                      onClick={togglePasswordVisibility}
+                      style={{
+                        borderColor: "#ced4da",
+                        backgroundColor: "white",
+                      }}
+                    >
+                      {showPassword ? <EyeSlash /> : <Eye />}
+                    </Button>
+                  </InputGroup>
                 </Form.Group>
 
-                {/* Xác nhận mật khẩu (chỉ cho đăng ký) */}
+                {/* Xác nhận mật khẩu với toggle visibility (chỉ cho đăng ký) */}
                 {mode === "signup" && (
                   <Form.Group className="mb-4">
                     <Form.Label className="fw-medium text-dark">
                       Xác nhận mật khẩu
                     </Form.Label>
-                    <Form.Control
-                      type="password"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      placeholder="Nhập lại mật khẩu"
-                      required
-                      className="py-2"
-                    />
+                    <InputGroup>
+                      <Form.Control
+                        type={showConfirmPassword ? "text" : "password"}
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        placeholder="Nhập lại mật khẩu"
+                        required
+                        className="py-2"
+                      />
+                      <Button
+                        variant="outline-secondary"
+                        onClick={toggleConfirmPasswordVisibility}
+                        style={{
+                          borderColor: "#ced4da",
+                          backgroundColor: "white",
+                        }}
+                      >
+                        {showConfirmPassword ? <EyeSlash /> : <Eye />}
+                      </Button>
+                    </InputGroup>
                   </Form.Group>
                 )}
 
@@ -208,6 +307,10 @@ export default function AuthForm({ mode = "signin" }) {
                   <a
                     href={mode === "signin" ? "/sign-up" : "/sign-in"}
                     className="text-decoration-none text-primary"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push(mode === "signin" ? "/sign-up" : "/sign-in");
+                    }}
                   >
                     {mode === "signin"
                       ? "Chưa có tài khoản? Đăng ký ngay"
@@ -220,7 +323,7 @@ export default function AuthForm({ mode = "signin" }) {
                       href="/forgot-password"
                       className="text-decoration-none text-muted"
                     >
-                      ⇔ Quên mật khẩu?
+                      ⟰ Quên mật khẩu?
                     </a>
                   </div>
                 )}

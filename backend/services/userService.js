@@ -81,6 +81,34 @@ const unblockUser = (id, callback) => {
   );
 };
 
+// Đăng nhập - kiểm tra tài khoản
+const loginUser = (username, password) => {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "SELECT * FROM taiKhoan WHERE tenDangNhap = ? AND matKhau = ? AND trangThai = 'Active'",
+      [username, password],
+      (err, results) => {
+        if (err) {
+          console.error("❌ Lỗi truy vấn đăng nhập:", err);
+          return reject(err);
+        }
+
+        if (results.length === 0) {
+          return reject(new Error("Tên đăng nhập hoặc mật khẩu không đúng"));
+        }
+
+        const user = results[0];
+        resolve({
+          maTaiKhoan: user.maTaiKhoan,
+          tenDangNhap: user.tenDangNhap,
+          capDo: user.capDo,
+          trangThai: user.trangThai,
+        });
+      }
+    );
+  });
+};
+
 module.exports = {
   getAllUsers,
   deleteUser,
@@ -88,4 +116,5 @@ module.exports = {
   updateUser,
   blockUser,
   unblockUser,
+  loginUser,
 };
