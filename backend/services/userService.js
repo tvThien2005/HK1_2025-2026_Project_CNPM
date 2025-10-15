@@ -2,7 +2,7 @@ const db = require("../config/db");
 
 const getAllUsers = (callback) => {
   db.query(
-    "SELECT * FROM taiKhoan WHERE trangThai = 'Hoạt động'",
+    "SELECT * FROM taiKhoan WHERE trangThai = 'Active'",
     (err, results) => {
       if (err) {
         console.error("❌ Lỗi truy vấn SQL:", err);
@@ -26,7 +26,7 @@ const addUser = (user, callback) => {
   const { tenDangNhap, matKhau, capDo } = user;
 
   const ngayTao = new Date().toISOString().slice(0, 10);
-  const trangThai = "Hoạt động";
+  const trangThai = "Active";
   db.query(
     "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai) VALUES (?, ?, ?, ?, ?)",
     [tenDangNhap, matKhau, ngayTao, capDo, trangThai],
@@ -70,7 +70,7 @@ const blockUser = (id, callback) => {
 };
 const unblockUser = (id, callback) => {
   db.query(
-    "UPDATE taiKhoan SET trangThai = 'Hoạt động' WHERE maTaiKhoan = ?",
+    "UPDATE taiKhoan SET trangThai = 'Active' WHERE maTaiKhoan = ?",
     [id],
     (err, results) => {
       if (err) {

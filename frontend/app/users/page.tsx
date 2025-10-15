@@ -311,7 +311,7 @@ const UsersPage = () => {
                             ? "bg-primary"
                             : user.capDo === "Driver"
                             ? "bg-success"
-                            : "bg-secondary"
+                            : "bg-warning"
                         }`}
                       >
                         {user.capDo}
