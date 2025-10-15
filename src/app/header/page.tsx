@@ -12,7 +12,7 @@ export default function Header() {
                 </Link>
                 <p className="font-bold text-xl">Smart School Bus Tracking System</p>
                 <div className='ml-auto mr-4'>
-                    <Link href="./user/information">
+                    <Link href="/user/information">
                         <FontAwesomeIcon icon={faUser} className='fa-2xl' />
                     </Link>
                 </div>
