@@ -1,8 +1,6 @@
 "use client";
 
 import React from "react";
-
-// import explicit modules (an toàn với mọi bundler)
 import Navbar from "react-bootstrap/Navbar";
 import NavbarBrand from "react-bootstrap/NavbarBrand";
 import NavbarToggle from "react-bootstrap/NavbarToggle";
@@ -12,12 +10,11 @@ import Nav from "react-bootstrap/Nav";
 import NavDropdown from "react-bootstrap/NavDropdown";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
-
 import { FaUserCircle, FaSignOutAlt } from "react-icons/fa";
 
 const Header = () => {
   const isLoggedIn = true;
-  const userName = "Admin";
+  const userName = "Văn Thiện";
 
   return (
     <Navbar
@@ -34,24 +31,27 @@ const Header = () => {
             {isLoggedIn ? (
               <NavDropdown
                 align="end"
-                title={
-                  <>
-                    <FaUserCircle className="me-2" />
-                    {userName}
-                  </>
-                }
                 id="user-nav-dropdown"
+                title={
+                  <span className="d-flex align-items-center">
+                    <FaUserCircle className="me-2" size={22} />
+                    <span>{userName}</span>
+                  </span>
+                }
               >
                 <NavDropdown.Item href="#profile">
                   Thông tin tài khoản
                 </NavDropdown.Item>
 
-                {/* Divider: dùng Dropdown.Divider (từ module riêng) */}
                 <Dropdown.Divider />
 
                 <NavDropdown.Item href="#logout">
-                  <FaSignOutAlt className="me-2" />
-                  Đăng xuất
+                  <Button variant="warning" className="w-100 text-start">
+                    <span className="d-flex align-items-center">
+                      <FaSignOutAlt className="me-2" />
+                      <span>Đăng xuất</span>
+                    </span>
+                  </Button>
                 </NavDropdown.Item>
               </NavDropdown>
             ) : (
