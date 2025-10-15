@@ -2,6 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Header from "../header/page";
 import { faCaretLeft, faPaperPlane } from "@fortawesome/free-solid-svg-icons"
 import { useState } from "react";
+import Link from "next/link";
 
 export default function report() {
     const date = new Date();
@@ -10,8 +11,10 @@ export default function report() {
         <div>
             <Header></Header>
             <div className="flex flex-wrap items-center border-2 border-zinc-600 w-1/15 mt-5 ml-5 mb-5 rounded-xl">
-                <FontAwesomeIcon icon={faCaretLeft}></FontAwesomeIcon>
-                <p>Trở lại</p>
+                <Link href="/" className="flex flex-wrap items-center">
+                    <FontAwesomeIcon icon={faCaretLeft}></FontAwesomeIcon>
+                    <p>Trở lại</p>
+                </Link>
             </div>
             <div className="border-3 border-zinc-300 rounded-lg mx-5">
                 <div className="flex m-2">
@@ -22,7 +25,7 @@ export default function report() {
                         <option>Quản lý C</option>
                     </select>
                     <div className="ml-auto mr-10 border-2 border-stone-900 rounded-lg px-3">
-                        <p>{date.getDate()}/{date.getMonth()}/{date.getFullYear()}</p>
+                        <p>{date.getDate()}/{date.getMonth() + 1}/{date.getFullYear()}</p>
                     </div>
                 </div>
                 <div className="flex flex-wrap m-2">

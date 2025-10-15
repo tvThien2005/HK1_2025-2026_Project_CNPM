@@ -1,36 +1,39 @@
+'use client'
 import { faClipboardList, faMessage, faUserGear } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Fragment } from "react"
 
 const items = [
     {
         title: "Thông tin người dùng",
-        url: "../user/information",
+        url: "/user/information",
         icon: faUserGear,
     },
     {
         title: "Lịch trình",
-        url: "../user/schedule",
+        url: "/user/schedule",
         icon: faClipboardList,
     },
     {
         title: "Lịch sử thông báo",
-        url: "../user/history",
-        icon: faMessage
+        url: "/user/history",
+        icon: faMessage,
     },
 ]
 
-const listItems = items.map(({ url, title, icon }) => (
-    <li className="rounded-sm" key={url}>
-        <Link href={url}>
-            <FontAwesomeIcon icon={icon}></FontAwesomeIcon>
-            <span>{title}</span>
-        </Link>
-    </li>
-))
-
 export default function Sidebar() {
+    const pathName = usePathname();
+    const listItems = items.map(({ url, title, icon }) => (
+        <li className="rounded-lg hover:bg-violet-400" key={url}>
+            <Link href={url} className={`${pathName === url ? "rounded-lg bg-violet-600" : ""}`}>
+                <FontAwesomeIcon icon={icon}></FontAwesomeIcon>
+                <span>{title}</span>
+            </Link>
+        </li>
+    ))
+
     return (
         <div className="flex">
             <div className="flex flex-col h-screen p-3 bg-white shadow w-60 bg-zinc-100">

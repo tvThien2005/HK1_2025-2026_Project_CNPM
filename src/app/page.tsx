@@ -10,8 +10,10 @@ export default function Home() {
       <Header></Header>
       <div className="my-10 flex justify-end">
         <div className="flex flex-warp items-center bg-red-400 rounded-xl hover:bg-red-600">
-          <FontAwesomeIcon icon={faWarning}></FontAwesomeIcon>
-          <Link href='/report'>Báo cáo</Link>
+          <Link href='/report'>
+            <FontAwesomeIcon icon={faWarning}></FontAwesomeIcon>
+            Báo cáo
+          </Link>
         </div>
       </div>
       <div className="flex items-center justify-center bg-green-300 mx-40 rounded-lg mb-10">
