@@ -1,103 +1,149 @@
-import Image from "next/image";
+import Header from "./header/page";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCircleUser, faClock, faClockFour, faLocation, faLocationDot, faLocationPin, faLocationPinLock, faMapLocationDot, faPerson, faRoad, faRoute, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { Progress } from "@/components/ui/progress";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div>
+      <Header></Header>
+      <div className="my-10 flex justify-end">
+        <div className="flex flex-warp items-center bg-red-400 rounded-xl hover:bg-red-600">
+          <FontAwesomeIcon icon={faWarning}></FontAwesomeIcon>
+          <Link href='/report'>Báo cáo</Link>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+      <div className="flex items-center justify-center bg-green-300 mx-40 rounded-lg mb-10">
+        <div>
+          <div>
+            <FontAwesomeIcon icon={faRoute}></FontAwesomeIcon>
+            <span>Chuyến đi hiện tại</span>
+          </div>
+          <p>Tuyến 01 - Sáng</p>
+          <div>
+            <FontAwesomeIcon icon={faClock}></FontAwesomeIcon>
+            <span>6:30 AM - 7:30 AM</span>
+          </div>
+          <div>
+            <FontAwesomeIcon icon={faLocationDot}></FontAwesomeIcon>
+            <span>Điểm dừng: 9/28</span>
+          </div>
+        </div>
+        <div className="mx-20">
+          <div className="">
+            <div className="flex flex-warp">
+              <p>Tiến độ: </p>
+              <p className="ml-auto">5%</p>
+            </div>
+            <Progress value={35} className="w-65"></Progress>
+            <p>Điểm đến tiếp theo: 98/9A, đường Lý <br />Thường Kiệt, phường Mỹ Huề, TPHCM</p>
+          </div>
+        </div>
+        <div>
+          <div>
+            <FontAwesomeIcon icon={faPerson}></FontAwesomeIcon>
+            <span>9/28 học sinh</span>
+          </div>
+          <div className="flex flex-wrap bg-stone-50 items-center justify-center hover:bg-zinc-300 rounded-lg">
+            <FontAwesomeIcon icon={faMapLocationDot}></FontAwesomeIcon>
+            <span>Mở bản đồ</span>
+          </div>
+        </div>
+      </div>
+      <div className="border-3 rounded-lg mx-40 scroll-smooth p-5 overflow-y-scroll h-100">
+        <div className="border-3 rounded-xl flex flex-wrap items-center m-5">
+          <input type="checkbox" className="w-10 h-8"></input>
+          <FontAwesomeIcon icon={faCircleUser} className="fa-4x px-5"></FontAwesomeIcon>
+          <div>
+            <p>Nguyễn Văn B</p>
+            <p>Lớp 6A6 - Địa điểm 8</p>
+          </div>
+          <div className="ml-auto mr-5 px-5 bg-stone-950 text-stone-50 rounded-lg">
+            <p>Đã lên xe</p>
+          </div>
+        </div>
+        <div className="border-3 rounded-xl flex flex-wrap items-center m-5">
+          <input type="checkbox" className="w-10 h-8"></input>
+          <FontAwesomeIcon icon={faCircleUser} className="fa-4x px-5"></FontAwesomeIcon>
+          <div>
+            <p>Nguyễn Văn B</p>
+            <p>Lớp 6A6 - Địa điểm 8</p>
+          </div>
+          <div className="ml-auto mr-5 px-5 bg-stone-950 text-stone-50 rounded-lg">
+            <p>Đã lên xe</p>
+          </div>
+        </div>
+        <div className="border-3 rounded-xl flex flex-wrap items-center m-5">
+          <input type="checkbox" className="w-10 h-8"></input>
+          <FontAwesomeIcon icon={faCircleUser} className="fa-4x px-5"></FontAwesomeIcon>
+          <div>
+            <p>Nguyễn Văn B</p>
+            <p>Lớp 6A6 - Địa điểm 8</p>
+          </div>
+          <div className="ml-auto mr-5 px-5 bg-stone-950 text-stone-50 rounded-lg">
+            <p>Đã lên xe</p>
+          </div>
+        </div>
+        <div className="border-3 rounded-xl flex flex-wrap items-center m-5">
+          <input type="checkbox" className="w-10 h-8"></input>
+          <FontAwesomeIcon icon={faCircleUser} className="fa-4x px-5"></FontAwesomeIcon>
+          <div>
+            <p>Nguyễn Văn B</p>
+            <p>Lớp 6A6 - Địa điểm 8</p>
+          </div>
+          <div className="ml-auto mr-5 px-5 bg-stone-950 text-stone-50 rounded-lg">
+            <p>Đã lên xe</p>
+          </div>
+        </div>
+        <div className="border-3 rounded-xl flex flex-wrap items-center m-5">
+          <input type="checkbox" className="w-10 h-8"></input>
+          <FontAwesomeIcon icon={faCircleUser} className="fa-4x px-5"></FontAwesomeIcon>
+          <div>
+            <p>Nguyễn Văn B</p>
+            <p>Lớp 6A6 - Địa điểm 8</p>
+          </div>
+          <div className="ml-auto mr-5 px-5 bg-stone-950 text-stone-50 rounded-lg">
+            <p>Đã lên xe</p>
+          </div>
+        </div>
+        <div className="border-3 rounded-xl flex flex-wrap items-center m-5">
+          <input type="checkbox" className="w-10 h-8"></input>
+          <FontAwesomeIcon icon={faCircleUser} className="fa-4x px-5"></FontAwesomeIcon>
+          <div>
+            <p>Nguyễn Văn B</p>
+            <p>Lớp 6A6 - Địa điểm 8</p>
+          </div>
+          <div className="ml-auto mr-5 px-5 bg-stone-950 text-stone-50 rounded-lg">
+            <p>Đã lên xe</p>
+          </div>
+        </div>
+        <div className="border-3 rounded-xl flex flex-wrap items-center m-5">
+          <input type="checkbox" className="w-10 h-8"></input>
+          <FontAwesomeIcon icon={faCircleUser} className="fa-4x px-5"></FontAwesomeIcon>
+          <div>
+            <p>Nguyễn Văn B</p>
+            <p>Lớp 6A6 - Địa điểm 8</p>
+          </div>
+          <div className="ml-auto mr-5 px-5 bg-zinc-400 text-stone-950 rounded-lg">
+            <p>Chờ đón</p>
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col place-self-center m-5 border-2 border-zinc-500 rounded-lg w-2/5">
+        <div className="flex w-full p-2">
+          <span className="">Tổng số học sinh </span>
+          <span className="ml-auto">28</span>
+        </div>
+        <div className="flex w-full p-2">
+          <span className="">Đã lên xe </span>
+          <span className="ml-auto">8</span>
+        </div>
+        <div className="flex w-full p-2">
+          <span className="">Chờ đón </span>
+          <span className="ml-auto">20</span>
+        </div>
+      </div>
     </div>
   );
 }
