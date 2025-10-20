@@ -48,8 +48,10 @@ export default function Home() {
             <span>9/28 học sinh</span>
           </div>
           <div className="flex flex-wrap bg-stone-50 items-center justify-center hover:bg-zinc-300 rounded-lg">
-            <FontAwesomeIcon icon={faMapLocationDot}></FontAwesomeIcon>
-            <span>Mở bản đồ</span>
+            <Link href="/map">
+              <FontAwesomeIcon icon={faMapLocationDot}></FontAwesomeIcon>
+              <span>Mở bản đồ</span>
+            </Link>
           </div>
         </div>
       </div>

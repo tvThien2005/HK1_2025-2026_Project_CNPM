@@ -10,7 +10,7 @@ export default function report() {
     return (
         <div>
             <Header></Header>
-            <div className="flex flex-wrap items-center border-2 border-zinc-600 w-1/15 mt-5 ml-5 mb-5 rounded-xl">
+            <div className="flex flex-wrap items-center border-2 border-zinc-600 w-1/15 mt-5 ml-5 mb-5 rounded-xl hover:bg-zinc-300">
                 <Link href="/" className="flex flex-wrap items-center">
                     <FontAwesomeIcon icon={faCaretLeft}></FontAwesomeIcon>
                     <p>Trở lại</p>

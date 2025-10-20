@@ -11,7 +11,7 @@ export default function Information() {
             <div className="flex">
                 <Sidebar></Sidebar>
                 <div className="flex flex-col w-full space-y-5 m-5">
-                    <div className="container flex">
+                    <form className="container flex">
                         <div className="flex flex-col w-4/5 space-y-2">
                             <h1 className="text-2xl">Thông tin tài khoản</h1>
                             <div className="text-xl">Thông tin cá nhân:</div>
@@ -51,7 +51,7 @@ export default function Information() {
                                     <option value={"Không hoạt động"}>Không hoạt động</option>
                                 </select>
                             </div>
-                            <button type="button" className="bg-blue-500 w-20 rounded-lg ml-auto">
+                            <button type="button" className="bg-blue-300 w-20 rounded-lg ml-auto hover:bg-blue-500">
                                 <FontAwesomeIcon icon={faDownload}></FontAwesomeIcon>
                                 <span>Lưu</span>
                             </button>
@@ -63,7 +63,7 @@ export default function Information() {
                             </button>
                             <img className="h-30 w-30 flex"></img>
                         </div>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>
