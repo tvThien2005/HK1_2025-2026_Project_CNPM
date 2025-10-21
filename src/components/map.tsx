@@ -15,19 +15,20 @@ export default function MyMapComponent() {
     iconSize: [38, 38],
   })
 
+  // [51.505, -0.09]
   return (
     <MapContainer
       key="leaflet-map"
-      center={[51.505, -0.09]}
-      zoom={13}
+      center={[10.760127893367377, 106.68222610822296]}
+      zoom={20}
       scrollWheelZoom={false}
-      style={{ height: '400px', width: '100%', borderRadius: '8px', display: 'flex', placeItems: 'center' }}
+      style={{ height: '100%', width: '100%', borderRadius: '8px', display: 'flex', placeItems: 'center' }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
       />
-      <Marker position={[51.505, -0.09]} icon={customIcon}>
+      <Marker position={[10.760127893367377, 106.68222610822296]} icon={customIcon}>
         <Popup>
           A pretty CSS3 popup. <br /> Easily customizable.
         </Popup>

@@ -26,7 +26,7 @@ export default function Page() {
                         <FontAwesomeIcon icon={faPaperPlane}></FontAwesomeIcon>
                         <span>Bản đồ</span>
                     </div>
-                    <div className='mb-2'>
+                    <div className='mb-2 h-100 w-full'>
                         <MyMapComponent />
                     </div>
                     <div className='flex flex-row justify-center space-x-4'>
