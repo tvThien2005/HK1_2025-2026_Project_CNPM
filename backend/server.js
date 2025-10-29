@@ -9,6 +9,10 @@ app.use(express.json());
 // Routes
 app.use("/api/users", require("./routes/userRoutes"));
 
+app.use("/api/assignDrivers", require("./routes/assignDriverRoutes"));
+
+app.use("/api/notifications", require("./routes/notificationRoutes"));
+
 // Route mặc định để test
 app.get("/", (req, res) => {
   res.json({ message: "Backend đang chạy!" });

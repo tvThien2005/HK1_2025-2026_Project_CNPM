@@ -17,7 +17,7 @@ const SchedulesPage = () => {
       </Head>
       <Container fluid>
         <div className="d-flex justify-content-between align-items-center my-4">
-          <h1>Quản lý lịch trình</h1>
+          <h2 className="my-2">Quản lý lịch trình</h2>
           <Button variant="primary" onClick={handleShow}>
             Tạo lịch trình mới
           </Button>

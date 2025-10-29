@@ -24,6 +24,7 @@ interface User {
   ngayTao: string;
   capDo: string;
   trangThai: string;
+  tinhTrang: number;
 }
 
 const UsersPage = () => {
@@ -40,7 +41,13 @@ const UsersPage = () => {
   const [formData, setFormData] = useState({
     tenDangNhap: "",
     matKhau: "",
-    capDo: "Parent",
+    capDo: "Manager",
+    hoTen: "",
+  });
+  const [formData1, setFormData1] = useState({
+    tenDangNhap: "",
+    matKhau: "",
+    capDo: "",
   });
 
   // Lấy dữ liệu từ backend
@@ -60,7 +67,13 @@ const UsersPage = () => {
 
   const handleInputChange = (e: any) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
+    if (showAddModal) {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+    setFormData1((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -85,6 +98,7 @@ const UsersPage = () => {
       tenDangNhap: "",
       matKhau: "",
       capDo: "Parent",
+      hoTen: "",
     });
     setShowAddModal(true);
   };
@@ -92,7 +106,7 @@ const UsersPage = () => {
   // Mở modal sửa
   const handleShowEditModal = (user: User) => {
     setSelectedUser(user);
-    setFormData({
+    setFormData1({
       tenDangNhap: user.tenDangNhap,
       matKhau: user.matKhau.split("T")[0],
       capDo: user.capDo,
@@ -134,6 +148,32 @@ const UsersPage = () => {
 
     return true;
   };
+  const validateFormEdit = () => {
+    if (!formData1.tenDangNhap.trim()) {
+      showAlert("Vui lòng nhập số điện thoại", "warning");
+      return false;
+    }
+
+    const phoneRegex = /^[0-9]{10,11}$/;
+    if (!phoneRegex.test(formData1.tenDangNhap)) {
+      showAlert("Số điện thoại phải có 10-11 chữ số", "warning");
+      return false;
+    }
+
+    if (!formData1.matKhau) {
+      showAlert("Vui lòng nhập ngày sinh", "warning");
+      return false;
+    }
+
+    const birthDate = new Date(formData1.matKhau);
+    const today = new Date();
+    if (birthDate > today) {
+      showAlert("Ngày sinh không thể lớn hơn ngày hiện tại", "warning");
+      return false;
+    }
+
+    return true;
+  };
 
   // Thêm tài khoản
   const handleAdd = async (e: React.FormEvent) => {
@@ -164,13 +204,13 @@ const UsersPage = () => {
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm() || !selectedUser) return;
+    if (!validateFormEdit() || !selectedUser) return;
 
     try {
       await axios.put(
         `http://localhost:5000/api/users/${selectedUser.maTaiKhoan}`,
         {
-          ...formData,
+          ...formData1,
           trangThai: selectedUser.trangThai, // Giữ nguyên trạng thái
         }
       );
@@ -256,9 +296,14 @@ const UsersPage = () => {
 
         {/* Alert */}
         {alert.show && (
-          <Alert variant={alert.type} className="mb-3">
-            {alert.message}
-          </Alert>
+          <div
+            className="position-fixed bottom-0 end-0 p-3"
+            style={{ zIndex: 2000 }}
+          >
+            <Alert variant={alert.type} className="shadow">
+              {alert.message}
+            </Alert>
+          </div>
         )}
 
         {/* Thanh tìm kiếm và nút thêm - nằm ngang hàng */}
@@ -287,9 +332,9 @@ const UsersPage = () => {
           <Table striped bordered hover className="shadow-sm">
             <thead>
               <tr>
-                <th>Mã TK</th>
+                <th>Mã Tài Khoản</th>
                 <th>Tên đăng nhập</th>
-                <th>mật khẩu</th>
+                <th>Mật khẩu</th>
                 <th>Ngày tạo</th>
                 <th>Vai trò</th>
                 <th>Trạng thái</th>
@@ -311,7 +356,7 @@ const UsersPage = () => {
                             ? "bg-primary"
                             : user.capDo === "Driver"
                             ? "bg-success"
-                            : "bg-secondary"
+                            : "bg-warning"
                         }`}
                       >
                         {user.capDo}
@@ -320,7 +365,7 @@ const UsersPage = () => {
                     <td>
                       <span
                         className={`badge ${
-                          user.trangThai === "Hoạt động"
+                          user.trangThai === "Active"
                             ? "bg-success"
                             : "bg-danger"
                         }`}
@@ -349,7 +394,7 @@ const UsersPage = () => {
                       >
                         <FaTrash size={20} />
                       </Button>
-                      {user.trangThai === "Hoạt động" ? (
+                      {user.tinhTrang === 1 ? (
                         <Button
                           variant="outline-danger"
                           size="sm"
@@ -414,66 +459,90 @@ const UsersPage = () => {
         )}
 
         {/* Modal Thêm tài khoản */}
-        <Modal show={showAddModal} onHide={handleCloseModal} size="lg">
-          <Modal.Header closeButton>
-            <Modal.Title>Thêm tài khoản mới</Modal.Title>
-          </Modal.Header>
+        <Modal
+          show={showAddModal}
+          onHide={handleCloseModal}
+          centered
+          backdrop="static"
+          dialogClassName="w-auto"
+          contentClassName="no-frame"
+        >
           <Form onSubmit={handleAdd}>
-            <Modal.Body>
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Tên đăng nhập *</Form.Label>
-                    <Form.Control
-                      type="tel"
-                      name="tenDangNhap"
-                      value={formData.tenDangNhap}
-                      onChange={handleInputChange}
-                      placeholder="Nhập tên đăng nhập(số điện thoại 10-11 số)"
-                      required
-                    />
-                    <Form.Text className="text-muted">
-                      Ví dụ: 0912345678
-                    </Form.Text>
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Mật khẩu *</Form.Label>
-                    <Form.Control
-                      type="date"
-                      name="matKhau"
-                      value={formData.matKhau}
-                      onChange={handleInputChange}
-                      required
-                      max={new Date().toISOString().split("T")[0]}
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
+            <div
+              className="p-4 rounded-3 bg-white shadow-sm"
+              style={{ width: 400 }}
+            >
+              <h5 className="text-center mb-4 fw-semibold">
+                Thêm tài khoản mới
+              </h5>
 
               <Form.Group className="mb-3">
-                <Form.Label>Vai trò *</Form.Label>
-                <Form.Select
-                  name="capDo"
-                  value={formData.capDo}
+                <Form.Label className="small fw-semibold">
+                  Họ và tên *
+                </Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  name="hoTen"
+                  value={formData.hoTen}
                   onChange={handleInputChange}
+                  placeholder="Nhập họ và tên"
                   required
-                >
-                  <option value="Parent">Phụ huynh</option>
-                  <option value="Manager">Quản lý</option>
-                  <option value="Driver">Tài xế</option>
-                </Form.Select>
+                />
               </Form.Group>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="secondary" onClick={handleCloseModal}>
-                Hủy
-              </Button>
-              <Button variant="primary" type="submit">
-                Thêm tài khoản
-              </Button>
-            </Modal.Footer>
+
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-semibold">
+                  Tên đăng nhập (SDT) *
+                </Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="tel"
+                  name="tenDangNhap"
+                  value={formData.tenDangNhap}
+                  onChange={handleInputChange}
+                  placeholder="0912345678"
+                  pattern="[0-9]{10,11}"
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-semibold">
+                  Mật khẩu (Ngày sinh) *
+                </Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="date"
+                  name="matKhau"
+                  value={formData.matKhau}
+                  onChange={handleInputChange}
+                  max={new Date().toISOString().split("T")[0]}
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-4">
+                <Form.Label className="small fw-semibold">Cấp độ *</Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  value="Quản lý"
+                  disabled
+                  readOnly
+                  className="fw-bold text-center"
+                />
+              </Form.Group>
+
+              <div className="d-flex justify-content-end gap-2">
+                <Button variant="light" size="sm" onClick={handleCloseModal}>
+                  Hủy
+                </Button>
+                <Button variant="primary" size="sm" type="submit">
+                  Thêm tài khoản
+                </Button>
+              </div>
+            </div>
           </Form>
         </Modal>
 
@@ -490,8 +559,8 @@ const UsersPage = () => {
                     <Form.Label>Số điện thoại *</Form.Label>
                     <Form.Control
                       type="tel"
-                      name="soDienThoai"
-                      value={formData.tenDangNhap}
+                      name="tenDangNhap"
+                      value={formData1.tenDangNhap}
                       onChange={handleInputChange}
                       placeholder="Nhập số điện thoại"
                       required
@@ -503,8 +572,8 @@ const UsersPage = () => {
                     <Form.Label>Ngày sinh *</Form.Label>
                     <Form.Control
                       type="date"
-                      name="ngaySinh"
-                      value={formData.matKhau}
+                      name="matKhau"
+                      value={formData1.matKhau}
                       onChange={handleInputChange}
                       required
                       max={new Date().toISOString().split("T")[0]}
@@ -517,7 +586,7 @@ const UsersPage = () => {
                 <Form.Label>Vai trò *</Form.Label>
                 <Form.Select
                   name="capDo"
-                  value={formData.capDo}
+                  value={formData1.capDo}
                   onChange={handleInputChange}
                   required
                 >

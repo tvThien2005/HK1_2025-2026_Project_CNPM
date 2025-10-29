@@ -30,5 +30,30 @@ body {
 .table-container {
   border-radius: 10px;
   overflow: hidden;
+  text-align: center;
   /* box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05); */
+}
+.no-frame {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.modal.show .modal-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+.modal {
+  overflow: visible !important;
+}
+
+.modal-dialog {
+  overflow: visible !important;
+}
+
+.modal-content {
+  overflow: visible !important;
 }

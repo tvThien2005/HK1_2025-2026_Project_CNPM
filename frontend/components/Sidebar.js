@@ -79,7 +79,7 @@ const Sidebar = () => {
         <NavItem className="mb-2">
           <NavLink
             as={Link}
-            href="/drivers"
+            href="/AssignDrivers"
             className="text-white d-flex align-items-center"
           >
             <FaCar className="me-2" /> Phân công tài xế
