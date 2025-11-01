@@ -490,7 +490,7 @@ const UsersPage = () => {
                     <Form.Label>Số điện thoại *</Form.Label>
                     <Form.Control
                       type="tel"
-                      name="soDienThoai"
+                      name="tenDangNhap"
                       value={formData.tenDangNhap}
                       onChange={handleInputChange}
                       placeholder="Nhập số điện thoại"
@@ -503,7 +503,7 @@ const UsersPage = () => {
                     <Form.Label>Ngày sinh *</Form.Label>
                     <Form.Control
                       type="date"
-                      name="ngaySinh"
+                      name="matKhau"
                       value={formData.matKhau}
                       onChange={handleInputChange}
                       required
