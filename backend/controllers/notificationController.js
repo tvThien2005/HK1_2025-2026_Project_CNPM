@@ -1,24 +1,83 @@
 const notificationService = require("../services/notificationService");
 
 const getNotificationDriver = (req, res) => {
-  notificationService.getAllNotificationsDriver((err, users) => {
-    if (err) return res.status(500).json({ error: "Lỗi server" });
-    // console.log("📦 Dữ liệu trả về:", users);
-    res.json(users);
+  console.log("📢 Lấy thông báo tài xế");
+  notificationService.getAllNotificationsDriver((err, notifications) => {
+    if (err) {
+      console.error("❌ Lỗi lấy thông báo tài xế:", err);
+      return res.status(500).json({
+        success: false,
+        error: "Lỗi server",
+        errorDetail: err.sqlMessage,
+      });
+    }
+    console.log(`✅ Trả về ${notifications.length} thông báo tài xế`);
+    res.json({
+      success: true,
+      data: notifications,
+    });
   });
 };
+
 const getNotificationParent = (req, res) => {
-  notificationService.getAllNotificationsParent((err, users) => {
-    if (err) return res.status(500).json({ error: "Lỗi server" });
-    // console.log("📦 Dữ liệu trả về:", users);
-    res.json(users);
+  console.log("📢 Lấy thông báo phụ huynh");
+  notificationService.getAllNotificationsParent((err, notifications) => {
+    if (err) {
+      console.error("❌ Lỗi lấy thông báo phụ huynh:", err);
+      return res.status(500).json({
+        success: false,
+        error: "Lỗi server",
+        errorDetail: err.sqlMessage,
+      });
+    }
+    console.log(`✅ Trả về ${notifications.length} thông báo phụ huynh`);
+    res.json({
+      success: true,
+      data: notifications,
+    });
+  });
+};
+const getAllParents = (req, res) => {
+  console.log("📢 Lấy tất cả phụ huynh");
+  notificationService.getAllParent((err, notifications) => {
+    if (err) {
+      console.error("❌ Lỗi lấy thông tin phụ huynh:", err);
+      return res.status(500).json({
+        success: false,
+        error: "Lỗi server",
+        errorDetail: err.sqlMessage,
+      });
+    }
+    console.log(`✅ Trả về ${notifications.length} thông tin phụ huynh`);
+    res.json({
+      success: true,
+      data: notifications,
+    });
+  });
+};
+const getAllDrivers = (req, res) => {
+  console.log("📢 Lấy tất cả Tài xế ");
+  notificationService.getAllDriver((err, notifications) => {
+    if (err) {
+      console.error("❌ Lỗi lấy thông tin tài xế:", err);
+      return res.status(500).json({
+        success: false,
+        error: "Lỗi server",
+        errorDetail: err.sqlMessage,
+      });
+    }
+    console.log(`✅ Trả về ${notifications.length} thông tin tài xế`);
+    res.json({
+      success: true,
+      data: notifications,
+    });
   });
 };
 
 const removeNotification = (req, res) => {
   const id = req.params.id;
-  console.log("🗑️ Backend - Xóa user ID:", id);
-  // Validate ID
+  console.log("🗑️ Controller - Xóa thông báo ID:", id);
+
   if (!id || isNaN(id)) {
     return res.status(400).json({
       success: false,
@@ -36,41 +95,46 @@ const removeNotification = (req, res) => {
       });
     }
 
-    // Kiểm tra có xóa được bản ghi nào không
-    if (results.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        error: "Không tìm thấy tài khoản để xóa",
-      });
-    }
-
-    console.log("✅ Xóa thành công, affected rows:", results.affectedRows);
+    console.log("✅ Controller - Xóa thành công");
     res.json({
       success: true,
-      message: "Xóa thành công",
+      message: "Xóa thông báo thành công",
       data: results,
     });
   });
 };
 
 const createNotification = (req, res) => {
-  const user = req.body;
-  notificationService.addNotification(user, (err, result) => {
-    if (err) {
-      console.error("🚨 Lỗi trong API:", err);
+  const notification = req.body;
+  console.log("📝 Controller - Thêm thông báo:", notification);
 
-      // TRẢ VỀ LỖI CHI TIẾT CHO FRONTEND
+  // Validate dữ liệu
+  if (!notification.noiDung || !notification.maTaiKhoan) {
+    return res.status(400).json({
+      success: false,
+      error: "Thiếu dữ liệu bắt buộc (noiDung, maTaiKhoan)",
+    });
+  }
+
+  notificationService.addNotification(notification, (err, result) => {
+    if (err) {
+      console.error("❌ Lỗi thêm thông báo:", err);
       return res.status(500).json({
         success: false,
-        message: "Lỗi server khi thêm tài khoản",
+        message: "Lỗi server khi thêm thông báo",
         errorDetail: {
           code: err.code,
           sqlMessage: err.sqlMessage,
-          fullError: err.toString(),
         },
       });
     }
-    res.json({ message: "Thêm thành công", id: result.insertId });
+
+    console.log("✅ Controller - Thêm thông báo thành công");
+    res.json({
+      success: true,
+      message: "Thêm thông báo thành công",
+      data: result,
+    });
   });
 };
 
@@ -79,4 +143,6 @@ module.exports = {
   getNotificationParent,
   removeNotification,
   createNotification,
+  getAllDrivers,
+  getAllParents
 };

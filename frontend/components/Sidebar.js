@@ -13,6 +13,7 @@ import {
   FaBell,
   FaMapMarkerAlt,
   FaUser,
+  FaUserTie,
 } from "react-icons/fa"; // Import icons
 
 const Sidebar = () => {
@@ -65,6 +66,15 @@ const Sidebar = () => {
             className="text-white d-flex align-items-center"
           >
             <FaUser className="me-2" /> Quản lí học sinh
+          </NavLink>
+        </NavItem>
+        <NavItem className="mb-2">
+          <NavLink
+            as={Link}
+            href="/Drivers"
+            className="text-white d-flex align-items-center"
+          >
+            <FaUserTie className="me-2" /> Quản lí tài xế
           </NavLink>
         </NavItem>
         <NavItem className="mb-2">

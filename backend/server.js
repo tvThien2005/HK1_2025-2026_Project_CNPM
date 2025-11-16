@@ -13,6 +13,8 @@ app.use("/api/assignDrivers", require("./routes/assignDriverRoutes"));
 
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 
+app.use("/api/drivers", require("./routes/driverRoutes"));
+
 // Route mặc định để test
 app.get("/", (req, res) => {
   res.json({ message: "Backend đang chạy!" });

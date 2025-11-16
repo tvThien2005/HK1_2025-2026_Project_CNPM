@@ -1,9 +1,32 @@
-// React notification management page
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import {
+  FaTrash,
+  FaPlus,
+  FaTimes,
+  FaPaperPlane,
+  FaFilter,
+  FaSearch,
+} from "react-icons/fa";
+import {
+  Button,
+  Card,
+  Modal,
+  Form,
+  Table,
+  Badge,
+  Row,
+  Col,
+  InputGroup,
+  Spinner,
+  Alert,
+  Pagination,
+  Container,
+} from "react-bootstrap";
 
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:5000/api";
+const API_BASE =
+  process.env.REACT_APP_API_BASE || "http://localhost:5000/api/notifications";
 
 interface Notification {
   tenTaiKhoan: string | undefined;
@@ -24,28 +47,55 @@ interface Person {
   tenPhuHuynh?: string;
   ten?: string;
 }
+interface Driver {
+  maTaiXe: number;
+  tenTaiXe?: string;
+  maTaiKhoan: number;
+}
+interface Parent {
+  maPhuHuynh: number;
+  tenPhuHuynh?: string;
+  maTaiKhoan: number;
+}
 
 export default function NotificationPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [drivers, setDrivers] = useState<Person[]>([]);
-  const [parents, setParents] = useState<Person[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [parents, setParents] = useState<Parent[]>([]);
+
+  const [alert, setAlert] = useState<{
+    show: boolean;
+    message: string;
+    type: string;
+  }>({
+    show: false,
+    message: "",
+    type: "",
+  });
 
   // Filters / form state
   const [qDateFrom, setQDateFrom] = useState("");
   const [qDateTo, setQDateTo] = useState("");
-  const [qRecipient, setQRecipient] = useState("all"); // all | driver | parent
+  const [qRecipient, setQRecipient] = useState("all");
 
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 8;
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 4;
 
-  // Form to create
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
   const [content, setContent] = useState("");
-  const [selectedRecipients, setSelectedRecipients] = useState<number[]>([]); // array of maTaiKhoan
-  const [selectDrivers, setSelectDrivers] = useState(false);
-  const [selectParents, setSelectParents] = useState(false);
+  const [selectedRecipients, setSelectedRecipients] = useState<number[]>([]);
+  const [recipientType, setRecipientType] = useState<
+    "driver" | "parent" | "both"
+  >("both");
+  const [selectAll, setSelectAll] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Thêm state để kiểm soát hydration
+  const [isClient, setIsClient] = useState(false);
+
   useEffect(() => {
+    setIsClient(true);
     fetchAll();
     fetchPeopleLists();
   }, []);
@@ -53,24 +103,28 @@ export default function NotificationPage() {
   const fetchAll = async () => {
     try {
       const [dRes, pRes] = await Promise.all([
-        axios.get(`${API_BASE}/notifications/drivers`),
-        axios.get(`${API_BASE}/notifications/parents`),
+        axios.get(`${API_BASE}/drivers`),
+        axios.get(`${API_BASE}/parents`),
       ]);
-      // backend returns arrays; we will normalize and mark recipientType
-      const driversWithType: Notification[] = (dRes.data || []).map(
-        (it: any) => ({
-          ...it,
-          recipientType: "driver" as const,
-        })
-      );
-      const parentsWithType: Notification[] = (pRes.data || []).map(
-        (it: any) => ({
-          ...it,
-          recipientType: "parent" as const,
-        })
-      );
+
+      const driversWithType: Notification[] = (
+        dRes.data?.data ||
+        dRes.data ||
+        []
+      ).map((it: any) => ({
+        ...it,
+        recipientType: "driver" as const,
+      }));
+      const parentsWithType: Notification[] = (
+        pRes.data?.data ||
+        pRes.data ||
+        []
+      ).map((it: any) => ({
+        ...it,
+        recipientType: "parent" as const,
+      }));
+
       const merged = [...driversWithType, ...parentsWithType];
-      // sort by time desc if thoiGianTao available
       merged.sort(
         (a, b) =>
           new Date(b.thoiGianTao).getTime() - new Date(a.thoiGianTao).getTime()
@@ -80,21 +134,233 @@ export default function NotificationPage() {
       console.error("Lỗi khi fetch notifications", err);
     }
   };
+  const showAlert = (message: string, type: string) => {
+    setAlert({ show: true, message, type });
+    setTimeout(() => {
+      setAlert({ show: false, message: "", type: "" });
+    }, 3000);
+  };
 
   const fetchPeopleLists = async () => {
     try {
+      console.log("🔄 Đang tải danh sách tài xế và phụ huynh...");
+
       const [dRes, pRes] = await Promise.all([
-        axios.get(`${API_BASE}/drivers`),
-        axios.get(`${API_BASE}/parents`),
+        axios.get(`${API_BASE}/driver`),
+        axios.get(`${API_BASE}/parent`),
       ]);
-      setDrivers(dRes.data || []);
-      setParents(pRes.data || []);
-    } catch (err) {
-      // If these endpoints don't exist on your backend, you can still send by choosing all and the UI will try best-effort
-      console.warn(
-        "Không thể load danh sách người nhận (drivers/parents) — kiểm tra API /drivers và /parents",
-        err
+
+      console.log("✅ Dữ liệu tài xế RAW:", dRes.data);
+      console.log("✅ Dữ liệu phụ huynh RAW:", pRes.data);
+
+      let driversData = dRes.data?.data || dRes.data || dRes.data?.users || [];
+      let parentsData = pRes.data?.data || pRes.data || pRes.data?.users || [];
+
+      // MAPPING DỮ LIỆU - QUAN TRỌNG!
+      // Nếu API không trả về maTaiKhoan, tạo mapping từ maTaiXe/maPhuHuynh
+      driversData = driversData.map((driver: any) => {
+        // Nếu đã có maTaiKhoan, giữ nguyên
+        if (driver.maTaiKhoan) {
+          return driver;
+        }
+        // Nếu không có, tạo maTaiKhoan từ maTaiXe (hoặc logic khác)
+        console.log(
+          `🔄 Mapping driver: maTaiXe ${driver.maTaiXe} -> maTaiKhoan`
+        );
+        return {
+          ...driver,
+          maTaiKhoan: driver.maTaiXe, // Hoặc driver.maTaiKhoan = driver.maTaiXe + 1000 nếu cần phân biệt
+        };
+      });
+
+      parentsData = parentsData.map((parent: any) => {
+        // Nếu đã có maTaiKhoan, giữ nguyên
+        if (parent.maTaiKhoan) {
+          return parent;
+        }
+        // Nếu không có, tạo maTaiKhoan từ maPhuHuynh
+        console.log(
+          `🔄 Mapping parent: maPhuHuynh ${parent.maPhuHuynh} -> maTaiKhoan`
+        );
+        return {
+          ...parent,
+          maTaiKhoan: parent.maPhuHuynh, // Hoặc parent.maTaiKhoan = parent.maPhuHuynh + 2000 nếu cần phân biệt
+        };
+      });
+
+      console.log("✅ Drivers sau mapping:", driversData);
+      console.log("✅ Parents sau mapping:", parentsData);
+
+      // Kiểm tra xem còn undefined không
+      const driversWithoutMaTaiKhoan = driversData.filter(
+        (d: { maTaiKhoan: any }) => !d.maTaiKhoan
       );
+      const parentsWithoutMaTaiKhoan = parentsData.filter(
+        (p: { maTaiKhoan: any }) => !p.maTaiKhoan
+      );
+
+      if (
+        driversWithoutMaTaiKhoan.length > 0 ||
+        parentsWithoutMaTaiKhoan.length > 0
+      ) {
+        console.warn("⚠️ Vẫn còn dữ liệu không có maTaiKhoan:", {
+          drivers: driversWithoutMaTaiKhoan,
+          parents: parentsWithoutMaTaiKhoan,
+        });
+      }
+
+      setDrivers(driversData);
+      setParents(parentsData);
+    } catch (err: any) {
+      console.warn(
+        "❌ Không thể load danh sách người nhận:",
+        err.response?.data || err.message
+      );
+
+      // Dữ liệu mẫu để test - ĐẢM BẢO CÓ maTaiKhoan
+    }
+  };
+
+  // Format date function - đồng bộ server/client
+  const formatDate = (dateString: string) => {
+    if (!isClient) return dateString;
+
+    const date = new Date(dateString);
+    return date.toLocaleString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Lấy danh sách người nhận theo loại
+  const getRecipientsByType = (): (Driver | Parent)[] => {
+    switch (recipientType) {
+      case "driver":
+        return drivers;
+      case "parent":
+        return parents;
+      case "both":
+        return [...drivers, ...parents];
+      default:
+        return [];
+    }
+  };
+
+  // Toggle chọn tất cả
+  const handleSelectAll = () => {
+    const recipients = getRecipientsByType();
+    if (selectAll) {
+      setSelectedRecipients([]);
+    } else {
+      const allIds = recipients.map((person) => person.maTaiKhoan);
+      setSelectedRecipients(allIds);
+    }
+    setSelectAll(!selectAll);
+  };
+  // Toggle chọn từng người
+  const toggleSelectRecipient = (maTaiKhoan: number) => {
+    setSelectedRecipients((prev) =>
+      prev.includes(maTaiKhoan)
+        ? prev.filter((x) => x !== maTaiKhoan)
+        : [...prev, maTaiKhoan]
+    );
+  };
+  // Mở modal tạo thông báo
+  const openCreateModal = () => {
+    setShowModal(true);
+    setContent("");
+    setSelectedRecipients([]);
+    setRecipientType("both");
+    setSelectAll(false);
+  };
+
+  // Đóng modal
+  const closeModal = () => {
+    setShowModal(false);
+    setContent("");
+    setSelectedRecipients([]);
+    setRecipientType("both");
+    setSelectAll(false);
+    setLoading(false);
+  };
+
+  // Xác nhận gửi thông báo
+  // Xác nhận gửi thông báo - SỬA LẠI
+  // Xác nhận gửi thông báo - SỬA LẠI HOÀN TOÀN
+  const confirmSendNotification = async () => {
+    if (!content.trim()) {
+      showAlert("Vui lòng nhập nội dung thông báo", "danger");
+      return;
+    }
+
+    if (selectedRecipients.length === 0) {
+      showAlert("Vui lòng chọn ít nhất một đối tượng nhận", "danger");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log(
+        "📤 Đang gửi thông báo đến các maTaiKhoan:",
+        selectedRecipients
+      );
+
+      // Gửi 1 request chứa MẢNG maTaiKhoan
+      const requestData = {
+        maQuanLyXe: 6,
+        noiDung: content,
+        maTaiKhoan: selectedRecipients, // Gửi mảng các maTaiKhoan
+      };
+
+      console.log("📦 Dữ liệu gửi lên server:", requestData);
+
+      const response = await axios.post(`${API_BASE}`, requestData);
+
+      console.log("✅ Phản hồi từ server:", response.data);
+
+      closeModal();
+      await fetchAll();
+      showAlert(
+        `✅ Đã gửi thông báo thành công cho ${selectedRecipients.length} người`,
+        "success"
+      );
+    } catch (err: any) {
+      console.error(
+        "❌ Gửi thông báo thất bại:",
+        err.response?.data || err.message
+      );
+      console.log("🔍 Chi tiết lỗi:", {
+        status: err.response?.status,
+        data: err.response?.data,
+      });
+      showAlert(
+        "Không thể gửi thông báo. Kiểm tra console để biết chi tiết.",
+        "danger"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (maThongBao: number, maTaiKhoan?: number) => {
+    if (!window.confirm("Bạn có chắc muốn xóa thông báo này?")) return;
+    try {
+      // Nếu backend cần maTaiKhoan để xóa
+      if (maTaiKhoan) {
+        await axios.delete(`${API_BASE}/${maThongBao}`, {
+          data: { maTaiKhoan: maTaiKhoan },
+        });
+      } else {
+        await axios.delete(`${API_BASE}/${maThongBao}`);
+      }
+      await fetchAll();
+      showAlert("Xóa thành công", "success");
+    } catch (err) {
+      console.error("Xóa thất bại", err);
+      showAlert("Xóa thất bại", "danger");
     }
   };
 
@@ -111,7 +377,6 @@ export default function NotificationPage() {
         if (new Date(n.thoiGianTao) < new Date(qDateFrom)) return false;
       }
       if (qDateTo) {
-        // include whole day
         const end = new Date(qDateTo);
         end.setHours(23, 59, 59, 999);
         if (new Date(n.thoiGianTao) > end) return false;
@@ -122,330 +387,489 @@ export default function NotificationPage() {
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageItems = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
-  const toggleSelectRecipient = (id: number) => {
-    setSelectedRecipients((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+  // Hiển thị loading ban đầu
+  if (!isClient) {
+    return (
+      <div className="container-fluid py-4">
+        {alert.show && (
+          <Alert
+            variant={alert.type === "success" ? "success" : "danger"}
+            className="position-fixed top-0 start-50 translate-middle-x mt-3"
+            style={{ zIndex: 9999, minWidth: "300px" }}
+          >
+            {alert.message}
+          </Alert>
+        )}
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ height: "50vh" }}
+        >
+          <Spinner animation="border" variant="primary" />
+          <span className="ms-3">Đang tải...</span>
+        </div>
+      </div>
     );
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content) return alert("Nội dung không được để trống");
-
-    // build recipient list based on checkboxes if user didn't pick specific
-    let recipients = [...selectedRecipients];
-    if (recipients.length === 0) {
-      if (selectDrivers)
-        recipients = recipients.concat(drivers.map((d) => d.maTaiKhoan));
-      if (selectParents)
-        recipients = recipients.concat(parents.map((p) => p.maTaiKhoan));
-    }
-    // dedupe
-    recipients = Array.from(new Set(recipients));
-    if (recipients.length === 0)
-      return alert(
-        "Vui lòng chọn đối tượng nhận (chọn cụ thể hoặc tích chọn tài xế/phụ huynh)"
-      );
-
-    const payload = {
-      maTaiKhoan: recipients, // per bạn: backend expects array
-      maQuanLyXe: 1, // placeholder — thay nếu có thông tin người quản lý
-      noiDung: content,
-    };
-
-    setLoading(true);
-    try {
-      // try sending in one request (best-case if backend supports array)
-      await axios.post(`${API_BASE}/notifications`, payload);
-      setContent("");
-      setSelectedRecipients([]);
-      setSelectDrivers(false);
-      setSelectParents(false);
-      await fetchAll();
-      alert("Gửi thông báo thành công");
-    } catch (err) {
-      console.warn(
-        "Gửi 1 lần thất bại — thử gửi từng request riêng (fallback)",
-        err
-      );
-      // fallback: if backend expects single maTaiKhoan per request
-      try {
-        await Promise.all(
-          recipients.map((id) =>
-            axios.post(`${API_BASE}/notifications`, {
-              maTaiKhoan: id,
-              maQuanLyXe: 1,
-              noiDung: content,
-            })
-          )
-        );
-        setContent("");
-        setSelectedRecipients([]);
-        setSelectDrivers(false);
-        setSelectParents(false);
-        await fetchAll();
-        alert("Gửi thông báo thành công (qua nhiều request)");
-      } catch (err2) {
-        console.error("Gửi từng request cũng thất bại", err2);
-        alert("Không thể gửi thông báo. Kiểm tra console để biết chi tiết.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (maThongBao: number) => {
-    if (!window.confirm("Bạn có chắc muốn xóa thông báo này?")) return;
-    try {
-      await axios.delete(`${API_BASE}/notifications/${maThongBao}`);
-      // backend may return results object — we simply refresh
-      await fetchAll();
-      alert("Xóa thành công");
-    } catch (err) {
-      console.error("Xóa thất bại", err);
-      alert("Xóa thất bại — kiểm tra console");
-    }
-  };
+  }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Quản lý thông báo</h1>
-
-      <div className="grid md:grid-cols-2 gap-6 mb-6">
-        <form
-          onSubmit={handleCreate}
-          className="p-4 border rounded-lg shadow-sm"
+    <div className="container-fluid py-4">
+      {alert.show && (
+        <Alert
+          variant={alert.type === "success" ? "success" : "danger"}
+          className="position-fixed top-0 start-50 translate-middle-x mt-3"
+          style={{ zIndex: 9999, minWidth: "300px" }}
         >
-          <h2 className="font-semibold mb-2">Tạo thông báo mới</h2>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Nội dung thông báo"
-            className="w-full p-2 border rounded mb-2"
-            rows={4}
-          />
+          {alert.message}
+        </Alert>
+      )}
+      {/* Header */}
+      <Container fluid>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h2 className="my-2 mb-0">Quản lý thông báo</h2>
+          <Button variant="primary" onClick={openCreateModal} size="sm">
+            Gửi thông báo
+          </Button>
+        </div>
+        {/* Bộ lọc */}
+        <Row className="mb-4">
+          <Col>
+            <Card>
+              <Card.Header className="bg-light">
+                <div className="d-flex align-items-center">
+                  <FaFilter className="me-2" />
+                  <h5 className="mb-0">Bộ lọc & Tìm kiếm</h5>
+                </div>
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={3}>
+                    <Form.Group>
+                      <Form.Label>Đối tượng nhận</Form.Label>
+                      <Form.Select
+                        value={qRecipient}
+                        onChange={(e) => {
+                          setQRecipient(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <option value="all">Tất cả</option>
+                        <option value="driver">Tài xế</option>
+                        <option value="parent">Phụ huynh</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={3}>
+                    <Form.Group>
+                      <Form.Label>Từ ngày</Form.Label>
+                      <Form.Control
+                        type="date"
+                        value={qDateFrom}
+                        onChange={(e) => {
+                          setQDateFrom(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={3}>
+                    <Form.Group>
+                      <Form.Label>Đến ngày</Form.Label>
+                      <Form.Control
+                        type="date"
+                        value={qDateTo}
+                        onChange={(e) => {
+                          setQDateTo(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={3}>
+                    <Form.Group>
+                      <Form.Label>&nbsp;</Form.Label>
+                      {/* <div className="d-grid"> */}
+                      <Button
+                        variant="outline-secondary"
+                        style={{ border: "none" }}
+                        onClick={() => {
+                          setQRecipient("all");
+                          setQDateFrom("");
+                          setQDateTo("");
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <FaTimes />
+                      </Button>
+                      {/* </div> */}
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Row className="mt-3">
+                  <Col>
+                    <Alert variant="info" className="mb-0 py-2">
+                      {/* <FaSearch className="me-2" /> */}
+                      <strong>
+                        Tìm thấy {filtered.length} thông báo phù hợp
+                      </strong>
+                    </Alert>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+        {/* Bảng thông báo */}
+        <Row>
+          <Col>
+            <Card>
+              <Card.Header className="bg-light">
+                <h5 className="mb-0">Danh sách thông báo</h5>
+              </Card.Header>
+              <Card.Body className="p-0">
+                <div className="table-responsive">
+                  <Table striped hover className="mb-0 no-border-table">
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: "80px" }}>Mã TB</th>
+                        <th style={{ width: "150px" }}>Người gửi</th>
+                        <th style={{ width: "250px" }}>Nội dung</th>
+                        <th style={{ width: "150px" }}>Ngày tạo</th>
+                        <th style={{ width: "120px" }}>Đối tượng</th>
+                        <th style={{ width: "80px" }}>Xóa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageItems.map((n) => (
+                        <tr key={`${n.maThongBao}-${n.maTaiKhoan}`}>
+                          <td>
+                            <Badge bg="secondary">#{n.maThongBao}</Badge>
+                          </td>
+                          <td>
+                            <div className="fw-semibold">
+                              {n.tenQuanLyXe || n.tenTaiKhoan || "System"}
+                            </div>
+                          </td>
+                          <td>
+                            <div
+                              className="notification-content"
+                              style={{
+                                whiteSpace: "normal",
+                                wordWrap: "break-word",
+                                lineHeight: "1.5",
+                                maxHeight: "100px",
+                                overflow: "hidden",
+                                cursor: "pointer",
+                              }}
+                              title={n.noiDung} // Hiển thị tooltip khi hover
+                            >
+                              {n.noiDung}
+                            </div>
+                          </td>
+                          <td>
+                            <small className="text-muted">
+                              {formatDate(n.thoiGianTao)}
+                            </small>
+                          </td>
+                          <td>
+                            <Badge
+                              bg={
+                                n.recipientType === "driver"
+                                  ? "primary"
+                                  : "success"
+                              }
+                            >
+                              {n.recipientType === "driver"
+                                ? "Tài xế"
+                                : "Phụ huynh"}
+                            </Badge>
+                          </td>
+                          <td>
+                            <Button
+                              variant="outline-danger"
+                              style={{ border: "none" }}
+                              size="sm"
+                              onClick={() => handleDelete(n.maThongBao)}
+                              className="me-2 mb-1"
+                              // style={{ width: "40px", height: "40px" }}
+                            >
+                              <FaTrash size={20} />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                      {pageItems.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="text-center py-4">
+                            <div className="text-muted">
+                              <FaSearch size={32} className="mb-2" />
+                              <p>Không có thông báo phù hợp</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Row className="mt-4">
+            <Col>
+              {/* <Card>
+              <Card.Body className="py-3"> */}
+              {/* <div className="d-flex justify-content-between align-items-center"> */}
+              {/* <div className="text-muted">
+                    Hiển thị{" "}
+                    <strong>{(currentPage - 1) * PAGE_SIZE + 1}</strong> đến{" "}
+                    <strong>
+                      {Math.min(currentPage * PAGE_SIZE, filtered.length)}
+                    </strong>{" "}
+                    trong tổng số <strong>{filtered.length}</strong> thông báo
+                  </div> */}
+              <div className="d-flex justify-content-center">
+                <Pagination>
+                  <Pagination.Prev
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  />
 
-          <div className="mb-2">
-            <label className="inline-flex items-center mr-4">
-              <input
-                type="checkbox"
-                checked={selectDrivers}
-                onChange={(e) => setSelectDrivers(e.target.checked)}
-                className="mr-2"
-              />{" "}
-              Gửi cho tài xế
-            </label>
-            <label className="inline-flex items-center">
-              <input
-                type="checkbox"
-                checked={selectParents}
-                onChange={(e) => setSelectParents(e.target.checked)}
-                className="mr-2"
-              />{" "}
-              Gửi cho phụ huynh
-            </label>
-          </div>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (number) => (
+                      <Pagination.Item
+                        key={number}
+                        active={number === currentPage}
+                        onClick={() => setCurrentPage(number)}
+                      >
+                        {number}
+                      </Pagination.Item>
+                    )
+                  )}
 
-          <div className="mb-2">
-            <small className="block mb-1">Hoặc chọn cụ thể:</small>
-            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-auto border p-2 rounded">
-              <div>
-                <div className="font-medium">Tài xế</div>
-                {drivers.length === 0 && (
-                  <div className="text-sm">
-                    (Không có dữ liệu hoặc API /drivers chưa có)
-                  </div>
-                )}
-                {drivers.map((d) => (
-                  <label key={d.maTaiKhoan} className="block text-sm">
-                    <input
-                      checked={selectedRecipients.includes(d.maTaiKhoan)}
-                      onChange={() => toggleSelectRecipient(d.maTaiKhoan)}
-                      className="mr-2"
-                      type="checkbox"
-                    />{" "}
-                    {d.tenTaiXe || d.ten}
-                  </label>
-                ))}
+                  <Pagination.Next
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  />
+                </Pagination>
               </div>
-              <div>
-                <div className="font-medium">Phụ huynh</div>
-                {parents.length === 0 && (
-                  <div className="text-sm">
-                    (Không có dữ liệu hoặc API /parents chưa có)
-                  </div>
-                )}
-                {parents.map((p) => (
-                  <label key={p.maTaiKhoan} className="block text-sm">
-                    <input
-                      checked={selectedRecipients.includes(p.maTaiKhoan)}
-                      onChange={() => toggleSelectRecipient(p.maTaiKhoan)}
-                      className="mr-2"
-                      type="checkbox"
-                    />{" "}
-                    {p.tenPhuHuynh || p.ten}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
+              {/* </div> */}
+              {/* </Card.Body>
+            </Card> */}
+            </Col>
+          </Row>
+        )}
+        {/* Modal tạo thông báo */}
+        <Modal
+          show={showModal}
+          onHide={closeModal}
+          size="lg"
+          centered
+          backdrop="static"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title className="d-flex align-items-center">
+              <FaPaperPlane className="me-2" />
+              Gửi thông báo mới
+            </Modal.Title>
+          </Modal.Header>
 
-          <div className="flex items-center gap-2">
-            <button
+          <Modal.Body>
+            {/* Nội dung thông báo */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-semibold">
+                Nội dung thông báo <span className="text-danger">*</span>
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Nhập nội dung thông báo..."
+                className="focus-ring"
+              />
+            </Form.Group>
+
+            {/* Chọn đối tượng nhận */}
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold">
+                Chọn đối tượng nhận <span className="text-danger">*</span>
+              </Form.Label>
+
+              <div className="mb-3">
+                <Form.Check
+                  inline
+                  type="radio"
+                  label="Cả hai (Tài xế & Phụ huynh)"
+                  name="recipientType"
+                  value="both"
+                  checked={recipientType === "both"}
+                  onChange={(e) => {
+                    setRecipientType(e.target.value as any);
+                    setSelectedRecipients([]);
+                    setSelectAll(false);
+                  }}
+                />
+                <Form.Check
+                  inline
+                  type="radio"
+                  label="Chỉ tài xế"
+                  name="recipientType"
+                  value="driver"
+                  checked={recipientType === "driver"}
+                  onChange={(e) => {
+                    setRecipientType(e.target.value as any);
+                    setSelectedRecipients([]);
+                    setSelectAll(false);
+                  }}
+                />
+                <Form.Check
+                  inline
+                  type="radio"
+                  label="Chỉ phụ huynh"
+                  name="recipientType"
+                  value="parent"
+                  checked={recipientType === "parent"}
+                  onChange={(e) => {
+                    setRecipientType(e.target.value as any);
+                    setSelectedRecipients([]);
+                    setSelectAll(false);
+                  }}
+                />
+              </div>
+
+              <Card>
+                <Card.Header className="bg-light py-2">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="fw-semibold">
+                      Đã chọn:{" "}
+                      <Badge bg="primary">{selectedRecipients.length}</Badge> /{" "}
+                      {getRecipientsByType().length} người
+                    </span>
+                    {getRecipientsByType().length > 0 && (
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        onClick={handleSelectAll}
+                      >
+                        {selectAll ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                      </Button>
+                    )}
+                  </div>
+                </Card.Header>
+                <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
+                  {getRecipientsByType().length > 0 ? (
+                    <Row>
+                      {getRecipientsByType().map((person, index) => {
+                        const isDriver = "maTaiXe" in person;
+                        const name = isDriver
+                          ? person.tenTaiXe
+                          : person.tenPhuHuynh;
+
+                        // Tạo key an toàn, tránh undefined
+                        const safeKey = `${isDriver ? "driver" : "parent"}-${
+                          person.maTaiKhoan || index
+                        }-${isDriver ? person.maTaiXe : person.maPhuHuynh}`;
+
+                        return (
+                          <Col
+                            md={6}
+                            key={safeKey} // Sử dụng key an toàn
+                            className="mb-2"
+                          >
+                            <Form.Check
+                              type="checkbox"
+                              id={`recipient-${person.maTaiKhoan || index}`}
+                              label={
+                                <div>
+                                  <span className="fw-medium">
+                                    {name ||
+                                      `Người dùng ${
+                                        person.maTaiKhoan || "N/A"
+                                      }`}
+                                  </span>
+                                  <Badge
+                                    bg={isDriver ? "primary" : "success"}
+                                    className="ms-2"
+                                  >
+                                    {isDriver ? "Tài xế" : "Phụ huynh"}
+                                  </Badge>
+                                </div>
+                              }
+                              checked={selectedRecipients.includes(
+                                person.maTaiKhoan
+                              )}
+                              onChange={() =>
+                                person.maTaiKhoan &&
+                                toggleSelectRecipient(person.maTaiKhoan)
+                              }
+                              disabled={!person.maTaiKhoan} // Disable nếu không có maTaiKhoan
+                            />
+                            {/* Hiển thị cảnh báo nếu không có maTaiKhoan */}
+                            {!person.maTaiKhoan && (
+                              <small className="text-danger">
+                                ⚠️ Thiếu mã tài khoản
+                              </small>
+                            )}
+                          </Col>
+                        );
+                      })}
+                    </Row>
+                  ) : (
+                    <div className="text-center py-4 text-muted">
+                      <FaSearch size={32} className="mb-2" />
+                      <p>
+                        Không có dữ liệu{" "}
+                        {recipientType === "both"
+                          ? "tài xế và phụ huynh"
+                          : recipientType === "driver"
+                          ? "tài xế"
+                          : "phụ huynh"}
+                      </p>
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Form.Group>
+          </Modal.Body>
+
+          <Modal.Footer>
+            <Button
+              variant="outline-secondary"
+              onClick={closeModal}
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded"
             >
-              {loading ? "Đang gửi..." : "Gửi"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setContent("");
-                setSelectedRecipients([]);
-                setSelectDrivers(false);
-                setSelectParents(false);
-              }}
-              className="px-3 py-2 border rounded"
+              Hủy
+            </Button>
+            <Button
+              variant="primary"
+              onClick={confirmSendNotification}
+              disabled={
+                loading || !content.trim() || selectedRecipients.length === 0
+              }
+              className="d-flex align-items-center gap-2"
             >
-              Reset
-            </button>
-          </div>
-        </form>
-
-        <div className="p-4 border rounded-lg shadow-sm">
-          <h2 className="font-semibold mb-2">Bộ lọc / Tìm kiếm</h2>
-          <div className="mb-2">
-            <label className="block text-sm">Đối tượng nhận</label>
-            <select
-              value={qRecipient}
-              onChange={(e) => {
-                setQRecipient(e.target.value);
-                setPage(1);
-              }}
-              className="w-full p-2 border rounded"
-            >
-              <option value="all">Tất cả</option>
-              <option value="driver">Tài xế</option>
-              <option value="parent">Phụ huynh</option>
-            </select>
-          </div>
-          <div className="mb-2">
-            <label className="block text-sm">Từ ngày</label>
-            <input
-              type="date"
-              value={qDateFrom}
-              onChange={(e) => {
-                setQDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div className="mb-2">
-            <label className="block text-sm">Đến ngày</label>
-            <input
-              type="date"
-              value={qDateTo}
-              onChange={(e) => {
-                setQDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div className="text-sm text-gray-600">
-            Tổng: {filtered.length} thông báo
-          </div>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto border rounded">
-        <table className="min-w-full divide-y">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="p-3 text-left">Mã TB</th>
-              <th className="p-3 text-left">Người gửi</th>
-              <th className="p-3 text-left">Nội dung</th>
-              <th className="p-3 text-left">Ngày tạo</th>
-              <th className="p-3 text-left">Đối tượng nhận</th>
-              <th className="p-3 text-left">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageItems.map((n) => (
-              <tr
-                key={`${n.maThongBao}-${n.maTaiKhoan}-${Math.random()}`}
-                className="border-t"
-              >
-                <td className="p-3">{n.maThongBao}</td>
-                <td className="p-3">
-                  {n.tenQuanLyXe || n.tenTaiKhoan || n.ten}
-                </td>
-                <td className="p-3">{n.noiDung}</td>
-                <td className="p-3">
-                  {new Date(n.thoiGianTao).toLocaleString()}
-                </td>
-                <td className="p-3">
-                  {n.recipientType === "driver" ? "Tài xế" : "Phụ huynh"}
-                </td>
-                <td className="p-3">
-                  <button
-                    onClick={() => handleDelete(n.maThongBao)}
-                    className="px-3 py-1 border rounded text-sm"
-                  >
-                    Xóa
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {pageItems.length === 0 && (
-              <tr>
-                <td className="p-4" colSpan={6}>
-                  Không có thông báo phù hợp
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex items-center justify-between mt-4">
-        <div>
-          Trang {page} / {totalPages}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPage(1)}
-            disabled={page === 1}
-            className="px-3 py-1 border rounded"
-          >
-            Đầu
-          </button>
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-3 py-1 border rounded"
-          >
-            Prev
-          </button>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="px-3 py-1 border rounded"
-          >
-            Next
-          </button>
-          <button
-            onClick={() => setPage(totalPages)}
-            disabled={page === totalPages}
-            className="px-3 py-1 border rounded"
-          >
-            Cuối
-          </button>
-        </div>
-      </div>
+              {loading ? (
+                <>
+                  <Spinner animation="border" size="sm" />
+                  Đang gửi...
+                </>
+              ) : (
+                <>
+                  <FaPaperPlane />
+                  Gửi cho {selectedRecipients.length} người
+                </>
+              )}
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      </Container>
     </div>
   );
 }

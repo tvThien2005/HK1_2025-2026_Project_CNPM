@@ -12,6 +12,8 @@ import {
   Pagination,
   Modal,
   Alert,
+  Card,
+  Badge,
 } from "react-bootstrap";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import { FaLock, FaUnlock } from "react-icons/fa";
@@ -66,7 +68,16 @@ const AssignPage = () => {
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 8;
+
+  // Thay thế phần state hiện tại
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
+
+  // Thêm state mới cho các dropdown
+  const [selectedDriver, setSelectedDriver] = useState("");
+  const [selectedBus, setSelectedBus] = useState("");
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -100,9 +111,7 @@ const AssignPage = () => {
   };
   const fetchDrivers = async () => {
     try {
-      const res = await axios.get(
-        "http://localhost:5000/api/assignDrivers/drivers"
-      );
+      const res = await axios.get("http://localhost:5000/api/drivers");
       setDrivers(res.data);
     } catch (err) {
       console.error("Lỗi khi lấy tài xế:", err);
@@ -166,13 +175,80 @@ const AssignPage = () => {
   // Search filter (search by driver name, bus name, plate, route)
   const filtered = assigns.filter((a) => {
     const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      (a.tenTaiXe || "").toLowerCase().includes(q) ||
-      (a.tenXe || "").toLowerCase().includes(q) ||
-      (a.bienSoXe || "").toLowerCase().includes(q) ||
-      (a.tenTuyenDuong || "").toLowerCase().includes(q)
-    );
+
+    console.log("🔍 Đang lọc:", {
+      assignDate: a.ngay,
+      dateFrom,
+      dateTo,
+      selectedTime,
+      search: q,
+    });
+
+    // Lọc theo tìm kiếm
+    if (
+      q &&
+      !(
+        (a.tenTaiXe || "").toLowerCase().includes(q) ||
+        (a.tenXe || "").toLowerCase().includes(q) ||
+        (a.bienSoXe || "").toLowerCase().includes(q) ||
+        (a.tenTuyenDuong || "").toLowerCase().includes(q)
+      )
+    ) {
+      console.log("❌ Không khớp tìm kiếm");
+      return false;
+    }
+
+    // Lọc theo ngày bắt đầu
+    if (dateFrom) {
+      const assignDate = new Date(a.ngay);
+      const fromDate = new Date(dateFrom);
+
+      console.log("📅 So sánh ngày:", {
+        assignDate: assignDate.toISOString(),
+        fromDate: fromDate.toISOString(),
+        isBefore: assignDate < fromDate,
+      });
+
+      if (assignDate < fromDate) {
+        console.log("❌ Ngày nhỏ hơn dateFrom");
+        return false;
+      }
+    }
+
+    // Lọc theo ngày kết thúc
+    if (dateTo) {
+      const assignDate = new Date(a.ngay);
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+
+      console.log("📅 So sánh ngày kết thúc:", {
+        assignDate: assignDate.toISOString(),
+        toDate: toDate.toISOString(),
+        isAfter: assignDate > toDate,
+      });
+
+      if (assignDate > toDate) {
+        console.log("❌ Ngày lớn hơn dateTo");
+        return false;
+      }
+    }
+
+    // Lọc theo giờ
+    if (selectedTime) {
+      console.log("⏰ So sánh giờ:", {
+        assignTime: a.thoiGianDi,
+        selectedTime,
+        isMatch: a.thoiGianDi === selectedTime,
+      });
+
+      if (a.thoiGianDi !== selectedTime) {
+        console.log("❌ Giờ không khớp");
+        return false;
+      }
+    }
+
+    console.log("✅ Qua tất cả bộ lọc");
+    return true;
   });
 
   // Pagination
@@ -327,6 +403,17 @@ const AssignPage = () => {
     }
   };
 
+  // Thêm hàm reset tất cả bộ lọc
+  const resetFilters = () => {
+    setDateFrom("");
+    setDateTo("");
+    setSelectedTime("");
+    setSelectedDriver("");
+    setSelectedBus("");
+    setSearch("");
+    setCurrentPage(1);
+  };
+
   // Utility: format display date
   const formatDate = (dateString: string) => {
     try {
@@ -342,8 +429,12 @@ const AssignPage = () => {
         <title>Phân công tài xế | Admin Bus Tracking</title>
       </Head>
       <Container fluid>
-        <h2 className="my-2">Quản lý phân công</h2>
-
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h2 className="my-2 mb-0">Quản lý phân công</h2>
+          <Button variant="primary" onClick={handleShowAdd} size="sm">
+            Tạo phân công
+          </Button>
+        </div>
         {alert.show && (
           <div
             className="position-fixed bottom-0 end-0 p-3"
@@ -354,33 +445,110 @@ const AssignPage = () => {
             </Alert>
           </div>
         )}
-        <Row className="align-items-center mb-3">
-          <Col md={6}>
-            <InputGroup>
-              <Form.Control
-                placeholder="Tìm kiếm theo tài xế / biển số xe / tuyến..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-              <Button variant="secondary" onClick={() => setSearch("")}>
-                Xóa
-              </Button>
-            </InputGroup>
-          </Col>
-          <Col md={6} className="text-end">
-            <Button variant="primary" onClick={handleShowAdd}>
-              Thêm phân công
-            </Button>
-          </Col>
-        </Row>
+        <Card className="mb-4">
+          <Card.Body>
+            <Row className="align-items-end">
+              <Col md={8}>
+                <Row>
+                  <Col md={3}>
+                    <Form.Group>
+                      <Form.Label>Từ ngày</Form.Label>
+                      <Form.Control
+                        type="date"
+                        size="sm"
+                        value={dateFrom}
+                        onChange={(e) => {
+                          setDateFrom(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={3}>
+                    <Form.Group>
+                      <Form.Label>Đến ngày</Form.Label>
+                      <Form.Control
+                        type="date"
+                        size="sm"
+                        value={dateTo}
+                        onChange={(e) => {
+                          setDateTo(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={3}>
+                    <Form.Group>
+                      <Form.Label>Giờ đi</Form.Label>
+                      <Form.Select
+                        size="sm"
+                        value={selectedTime}
+                        onChange={(e) => {
+                          setSelectedTime(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <option value="">Tất cả giờ</option>
+                        {/* Tạo danh sách giờ tự động từ dữ liệu */}
+                        {Array.from(new Set(schedules.map((s) => s.thoiGianDi)))
+                          .sort()
+                          .map((time) => (
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
+                          ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </Col>
 
+              <Col md={3}>
+                <Form.Group>
+                  <Form.Label>Tìm kiếm</Form.Label>
+                  <InputGroup>
+                    <Form.Control
+                      placeholder="Tìm kiếm..."
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      size="sm"
+                    />
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={resetFilters}
+                    >
+                      Xóa
+                    </Button>
+                  </InputGroup>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {/* Hiển thị thông tin lọc */}
+            <Row className="mt-2">
+              <Col>
+                <Alert variant="info" className="py-2 mb-0">
+                  <small>
+                    <strong>Kết quả lọc:</strong> Tìm thấy {filtered.length}{" "}
+                    phân công
+                    {dateFrom && ` từ ${dateFrom}`}
+                    {dateTo && ` đến ${dateTo}`}
+                    {selectedTime && ` - Giờ: ${selectedTime}`}
+                  </small>
+                </Alert>
+              </Col>
+            </Row>
+          </Card.Body>
+        </Card>
         <div className="table-container">
-          <Table striped bordered hover className="shadow-sm">
+          <Table striped bordered hover className="shadow-sm no-border-table">
             <thead>
-              <tr>
+              <tr style={{ border: "none" }}>
                 <th>Mã chuyến</th>
                 <th>Tài xế</th>
                 <th>Biển số </th>
@@ -394,7 +562,9 @@ const AssignPage = () => {
               {currentAssigns.length > 0 ? (
                 currentAssigns.map((a) => (
                   <tr key={a.maChuyenXe}>
-                    <td>{a.maChuyenXe}</td>
+                    <td>
+                      <Badge bg="secondary">#{a.maChuyenXe}</Badge>
+                    </td>
                     <td>{a.tenTaiXe}</td>
                     <td>{a.bienSoXe}</td>
                     <td>{formatDate(a.ngay)}</td>
@@ -418,7 +588,11 @@ const AssignPage = () => {
                         size="sm"
                         className="mb-1"
                         style={{ border: "none" }}
-                        onClick={() => handleDelete(a.maChuyenXe)}
+                        onClick={() => {
+                          handleDelete(a.maChuyenXe).then(() => {
+                            resetFilters();
+                          });
+                        }}
                         title="Xóa"
                       >
                         <FaTrash size={20} />
@@ -436,7 +610,6 @@ const AssignPage = () => {
             </tbody>
           </Table>
         </div>
-
         {totalPages > 1 && (
           <div className="d-flex justify-content-center">
             <Pagination>
@@ -462,7 +635,6 @@ const AssignPage = () => {
             </Pagination>
           </div>
         )}
-
         {/* Modal Add */}
         <Modal
           show={showAddModal}
@@ -474,9 +646,16 @@ const AssignPage = () => {
         >
           <Form onSubmit={handleAdd}>
             <div
-              className="p-4 rounded-3 bg-white shadow-sm"
+              className="p-4 rounded-3 bg-white shadow-sm position-relative"
               style={{ width: 400 }}
             >
+              <button
+                type="button"
+                className="btn-close position-absolute"
+                style={{ top: 15, right: 15 }}
+                onClick={() => setShowAddModal(false)}
+                aria-label="Close"
+              ></button>
               <h5 className="text-center mb-4 fw-semibold">
                 Thêm phân công mới
               </h5>
@@ -576,7 +755,6 @@ const AssignPage = () => {
             </div>
           </Form>
         </Modal>
-
         {/* Modal Edit */}
         <Modal
           show={showEditModal}

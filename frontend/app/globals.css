@@ -57,3 +57,21 @@ body {
 .modal-content {
   overflow: visible !important;
 }
+.no-border-table {
+  border: none !important;
+}
+
+.no-border-table th,
+.no-border-table td {
+  border: none !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+.no-border-table thead th {
+  border: none !important;
+}
+
+.no-border-table tbody tr {
+  border-bottom: 1px solid transparent !important;
+}

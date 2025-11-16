@@ -12,6 +12,7 @@ import {
   Pagination,
   Modal,
   Alert,
+  Badge,
 } from "react-bootstrap";
 import { FaEdit, FaTrash, FaLock, FaUnlock } from "react-icons/fa";
 import axios from "axios";
@@ -329,9 +330,9 @@ const UsersPage = () => {
           </Col>
         </Row>
         <div className="table-container">
-          <Table striped bordered hover className="shadow-sm">
+          <Table striped bordered hover className="shadow-sm no-border-table">
             <thead>
-              <tr>
+              <tr style={{ border: "none" }}>
                 <th>Mã Tài Khoản</th>
                 <th>Tên đăng nhập</th>
                 <th>Mật khẩu</th>
@@ -345,7 +346,9 @@ const UsersPage = () => {
               {currentUsers.length > 0 ? (
                 currentUsers.map((user, index) => (
                   <tr key={user.maTaiKhoan}>
-                    <td>{user.maTaiKhoan}</td>
+                    <td>
+                      <Badge bg="secondary">#{user.maTaiKhoan}</Badge>
+                    </td>
                     <td>{user.tenDangNhap}</td>
                     <td>{user.matKhau}</td>
                     <td>{user.ngayTao.split("T")[0]}</td>
@@ -469,9 +472,16 @@ const UsersPage = () => {
         >
           <Form onSubmit={handleAdd}>
             <div
-              className="p-4 rounded-3 bg-white shadow-sm"
+              className="p-4 rounded-3 bg-white shadow-sm position-relative"
               style={{ width: 400 }}
             >
+              <button
+                type="button"
+                className="btn-close position-absolute"
+                style={{ top: 15, right: 15 }}
+                onClick={handleCloseModal}
+                aria-label="Close"
+              ></button>
               <h5 className="text-center mb-4 fw-semibold">
                 Thêm tài khoản mới
               </h5>
