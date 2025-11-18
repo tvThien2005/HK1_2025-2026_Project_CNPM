@@ -153,7 +153,12 @@ const DriversPage = () => {
       soDienThoai: driver.soDienThoai,
       soBangLai: driver.soBangLai,
     });
-    setImagePreview(driver.anhTaiXe || "");
+    // Hiển thị ảnh hiện tại nếu có
+    if (driver.anhTaiXe) {
+      setImagePreview(`http://localhost:5000${driver.anhTaiXe}`);
+    } else {
+      setImagePreview("");
+    }
     setSelectedImage(null);
     setShowEditModal(true);
   };
@@ -216,23 +221,50 @@ const DriversPage = () => {
   const uploadImage = async (): Promise<string> => {
     if (!selectedImage) return formData.anhTaiXe;
 
-    const formDataToSend = new FormData();
-    formDataToSend.append("image", selectedImage);
-
     try {
+      // Tạo FormData đúng cách
+      const formDataToSend = new FormData();
+
+      // QUAN TRỌNG: Append file với đúng tên field "image"
+      // Và truyền file object trực tiếp, không phải base64 hay string
+      if (selectedImage instanceof File) {
+        formDataToSend.append("image", selectedImage);
+      } else if (typeof selectedImage === "string") {
+        // Nếu selectedImage là base64 string, chuyển thành blob
+        const response = await fetch(selectedImage);
+        const blob = await response.blob();
+        const file = new File([blob], "driver-image.jpg", {
+          type: "image/jpeg",
+        });
+        formDataToSend.append("image", file);
+      } else {
+        throw new Error("Định dạng ảnh không hợp lệ");
+      }
+
+      console.log("📤 Đang upload ảnh...");
+
       const response = await axios.post(
-        "http://localhost:5000/api/upload",
+        "http://localhost:5000/api/upload/driver",
         formDataToSend,
         {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          // Thêm timeout
+          timeout: 30000,
         }
       );
+
+      console.log("✅ Upload thành công:", response.data);
       return response.data.imageUrl;
-    } catch (error) {
-      console.error("Lỗi upload ảnh:", error);
-      throw new Error("Không thể upload ảnh");
+    } catch (error: any) {
+      console.error("❌ Lỗi upload ảnh:", error);
+
+      if (error.code === "ECONNABORTED") {
+        throw new Error("Timeout khi upload ảnh");
+      }
+
+      throw new Error(error.response?.data?.message || "Không thể upload ảnh");
     }
   };
 
@@ -254,7 +286,15 @@ const DriversPage = () => {
         anhTaiXe: imageUrl,
       };
 
-      await axios.post("http://localhost:5000/api/drivers", driverData);
+      const res = await axios.post(
+        "http://localhost:5000/api/drivers",
+        driverData
+      );
+
+      if (res.data.exists) {
+        showAlert("Số điện thoại đã tồn tại!", "danger");
+        return;
+      }
       fetchDrivers();
       handleCloseModal();
       showAlert("Thêm tài xế thành công", "success");
@@ -387,14 +427,13 @@ const DriversPage = () => {
           </Col>
         </Row>
 
-        {/* Bảng dữ liệu */}
+        {/* Bảng dữ liệu - ĐÃ SỬA: Bỏ cột ảnh riêng, hiển thị ảnh cùng tên */}
         <div className="table-container">
           <Table striped bordered hover className="shadow-sm no-border-table">
             <thead>
               <tr style={{ border: "none" }}>
                 <th>Mã TX</th>
-                <th>Ảnh</th>
-                <th>Tên tài xế</th>
+                <th>Tài xế</th>
                 <th>Ngày sinh</th>
                 <th>Tuổi</th>
                 <th>Số điện thoại</th>
@@ -411,35 +450,40 @@ const DriversPage = () => {
                       <Badge bg="secondary">#{driver.maTaiXe}</Badge>
                     </td>
                     <td>
-                      {driver.anhTaiXe ? (
-                        <img
-                          src={driver.anhTaiXe}
-                          alt={driver.tenTaiXe}
-                          style={{
-                            width: "50px",
-                            height: "50px",
-                            objectFit: "cover",
-                            borderRadius: "50%",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: "50px",
-                            height: "50px",
-                            borderRadius: "50%",
-                            backgroundColor: "#f8f9fa",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "#6c757d",
-                          }}
-                        >
-                          <FaUserTie size={20} />
-                        </div>
-                      )}
+                      <div className="d-flex align-items-center">
+                        {/* Hiển thị ảnh tài xế bên cạnh tên */}
+                        {driver.anhTaiXe ? (
+                          <img
+                            src={`http://localhost:5000${driver.anhTaiXe}`}
+                            alt={driver.tenTaiXe}
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              objectFit: "cover",
+                              borderRadius: "50%",
+                              marginRight: "12px",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              borderRadius: "50%",
+                              backgroundColor: "#f8f9fa",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#6c757d",
+                              marginRight: "12px",
+                            }}
+                          >
+                            <FaUserTie size={16} />
+                          </div>
+                        )}
+                        <span className="fw-semibold">{driver.tenTaiXe}</span>
+                      </div>
                     </td>
-                    <td className="fw-semibold">{driver.tenTaiXe}</td>
                     <td>{formatDate(driver.ngaySinh)}</td>
                     <td>
                       <Badge bg="info">
@@ -491,7 +535,7 @@ const DriversPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="text-center py-4">
+                  <td colSpan={8} className="text-center py-4">
                     Không có dữ liệu tài xế
                   </td>
                 </tr>
@@ -529,7 +573,7 @@ const DriversPage = () => {
           </div>
         )}
 
-        {/* Modal Thêm tài xế */}
+        {/* Modal Thêm tài xế - ĐÃ SỬA: Hiển thị ảnh preview lớn hơn */}
         <Modal
           show={showAddModal}
           onHide={handleCloseModal}
@@ -545,7 +589,7 @@ const DriversPage = () => {
           <Form onSubmit={handleAdd}>
             <Modal.Body>
               <Row>
-                <Col md={6}>
+                <Col md={7}>
                   <Form.Group className="mb-3">
                     <Form.Label>Tên tài xế *</Form.Label>
                     <Form.Control
@@ -596,7 +640,7 @@ const DriversPage = () => {
                   </Form.Group>
                 </Col>
 
-                <Col md={6}>
+                <Col md={5}>
                   <Form.Group className="mb-3">
                     <Form.Label>Ảnh tài xế</Form.Label>
                     <div className="border rounded p-3 text-center">
@@ -606,8 +650,8 @@ const DriversPage = () => {
                             src={imagePreview}
                             alt="Preview"
                             style={{
-                              width: "300px",
-                              height: "150px",
+                              width: "200px",
+                              height: "200px",
                               objectFit: "cover",
                               borderRadius: "8px",
                               marginBottom: "10px",
@@ -677,7 +721,7 @@ const DriversPage = () => {
           </Form>
         </Modal>
 
-        {/* Modal Sửa tài xế */}
+        {/* Modal Sửa tài xế - ĐÃ SỬA: Hiển thị ảnh preview lớn hơn */}
         <Modal show={showEditModal} onHide={handleCloseModal} size="lg">
           <Modal.Header closeButton>
             <Modal.Title className="w-100 text-center fw-semibold">
@@ -687,7 +731,7 @@ const DriversPage = () => {
           <Form onSubmit={handleEdit}>
             <Modal.Body>
               <Row>
-                <Col md={6}>
+                <Col md={7}>
                   <Form.Group className="mb-3">
                     <Form.Label>Tên tài xế *</Form.Label>
                     <Form.Control
@@ -733,7 +777,7 @@ const DriversPage = () => {
                   </Form.Group>
                 </Col>
 
-                <Col md={6}>
+                <Col md={5}>
                   <Form.Group className="mb-3">
                     <Form.Label>Ảnh tài xế</Form.Label>
                     <div className="border rounded p-3 text-center">
@@ -743,8 +787,8 @@ const DriversPage = () => {
                             src={imagePreview}
                             alt="Preview"
                             style={{
-                              width: "150px",
-                              height: "150px",
+                              width: "200px",
+                              height: "200px",
                               objectFit: "cover",
                               borderRadius: "8px",
                               marginBottom: "10px",

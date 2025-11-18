@@ -51,27 +51,31 @@ const createDriver = (req, res) => {
   const driver = req.body;
   driverService.addDriver(driver, (err, result) => {
     if (err) {
-      console.error("🚨 Lỗi trong API:", err);
-
-      // TRẢ VỀ LỖI CHI TIẾT CHO FRONTEND
       return res.status(500).json({
         success: false,
-        message: "Lỗi server khi thêm tài khoản",
-        errorDetail: {
-          code: err.code,
-          sqlMessage: err.sqlMessage,
-          fullError: err.toString(),
-        },
+        message: "Lỗi server khi thêm tài xế",
+        errorDetail: err,
       });
     }
-    res.json({ message: "Thêm thành công", id: result.insertId });
+
+    // ⛔ Nếu username tồn tại → trả exists cho frontend
+    if (result.exists) {
+      return res.json({ exists: true });
+    }
+
+    // ✅ Nếu thêm thành công
+    res.json({
+      success: true,
+      message: "Thêm thành công",
+      id: result.taiXe?.insertId,
+    });
   });
 };
 
 const editDriver = (req, res) => {
   const id = req.params.id;
   const driver = req.body;
-  driverService.updateDriver(id, user, (err) => {
+  driverService.updateDriver(id, driver, (err) => {
     if (err) return res.status(500).json({ error: "Lỗi khi cập nhật" });
     res.json({ message: "Cập nhật thành công" });
   });

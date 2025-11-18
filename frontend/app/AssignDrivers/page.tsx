@@ -15,8 +15,7 @@ import {
   Card,
   Badge,
 } from "react-bootstrap";
-import { FaEdit, FaTrash } from "react-icons/fa";
-import { FaLock, FaUnlock } from "react-icons/fa";
+import { FaEdit, FaTrash, FaCog } from "react-icons/fa";
 import axios from "axios";
 
 interface Assign {
@@ -28,6 +27,7 @@ interface Assign {
   thoiGianDi: string;
   thoiGianDen: string;
   tenTuyenDuong: string;
+  trangThai: string;
 
   // optional IDs (recommended backend should provide)
   maTaiXe?: number;
@@ -43,7 +43,6 @@ interface Driver {
 
 interface Bus {
   maXeBuyt: number;
-  // tenXe: string;
   bienSoXe: string;
 }
 
@@ -70,22 +69,22 @@ const AssignPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // Thay thế phần state hiện tại
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
-
-  // Thêm state mới cho các dropdown
   const [selectedDriver, setSelectedDriver] = useState("");
   const [selectedBus, setSelectedBus] = useState("");
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedAssign, setSelectedAssign] = useState<Assign | null>(null);
+  const [selectedStatusAssign, setSelectedStatusAssign] =
+    useState<Assign | null>(null);
+  const [newStatus, setNewStatus] = useState("");
 
   const [alert, setAlert] = useState({ show: false, message: "", type: "" });
 
-  // Form states for add / edit
   const [formAdd, setFormAdd] = useState({
     maTaiXe: "",
     maXeBuyt: "",
@@ -99,6 +98,66 @@ const AssignPage = () => {
     maTuyenDuong: "",
   });
 
+  // Hàm lấy màu badge cho trạng thái
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "Scheduled":
+        return "bg-info text-dark";
+      case "InProgress":
+        return "bg-warning text-dark";
+      case "Completed":
+        return "bg-success";
+      default:
+        return "bg-danger";
+    }
+  };
+
+  // Hàm lấy tên hiển thị cho trạng thái
+  const getStatusDisplayName = (status: string) => {
+    switch (status) {
+      case "Scheduled":
+        return "Đã lên lịch";
+      case "InProgress":
+        return "Đang thực hiện";
+      case "Completed":
+        return "Hoàn thành";
+      default:
+        return status;
+    }
+  };
+
+  // Hàm mở modal thay đổi trạng thái
+  const handleShowStatusChange = (assign: Assign) => {
+    setSelectedStatusAssign(assign);
+    setNewStatus("");
+    setShowStatusModal(true);
+  };
+
+  // Hàm cập nhật trạng thái
+  const handleStatusUpdate = async () => {
+    if (!selectedStatusAssign || !newStatus) {
+      showAlert("Vui lòng chọn trạng thái mới", "warning");
+      return;
+    }
+    try {
+      await axios.put(
+        `http://localhost:5000/api/assignDrivers/${selectedStatusAssign.maChuyenXe}/status`,
+        { trangThai: newStatus }
+      );
+      showAlert("Cập nhật trạng thái thành công", "success");
+      setShowStatusModal(false);
+      setSelectedStatusAssign(null);
+      setNewStatus("");
+      fetchAssigns();
+    } catch (err: any) {
+      console.error("Lỗi cập nhật trạng thái:", err);
+      showAlert(
+        err?.response?.data?.error || "Lỗi khi cập nhật trạng thái",
+        "danger"
+      );
+    }
+  };
+
   // Fetch functions
   const fetchAssigns = async () => {
     try {
@@ -109,6 +168,7 @@ const AssignPage = () => {
       showAlert("Lỗi khi tải phân công", "danger");
     }
   };
+
   const fetchDrivers = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/drivers");
@@ -118,17 +178,17 @@ const AssignPage = () => {
       showAlert("Lỗi khi tải danh sách tài xế", "danger");
     }
   };
+
   const fetchBuses = async () => {
     try {
-      const res = await axios.get(
-        "http://localhost:5000/api/assignDrivers/buses"
-      );
-      setBuses(res.data);
+      const res = await axios.get("http://localhost:5000/api/buses");
+      setBuses(res.data.data || []);
     } catch (err) {
       console.error("Lỗi khi lấy xe:", err);
       showAlert("Lỗi khi tải danh sách xe", "danger");
     }
   };
+
   const fetchSchedules = async () => {
     try {
       const res = await axios.get(
@@ -140,6 +200,7 @@ const AssignPage = () => {
       showAlert("Lỗi khi tải lịch trình", "danger");
     }
   };
+
   const fetchRoutes = async () => {
     try {
       const res = await axios.get(
@@ -172,19 +233,10 @@ const AssignPage = () => {
     setTimeout(() => setAlert({ show: false, message: "", type: "" }), 3000);
   };
 
-  // Search filter (search by driver name, bus name, plate, route)
+  // Search filter
   const filtered = assigns.filter((a) => {
     const q = search.trim().toLowerCase();
 
-    console.log("🔍 Đang lọc:", {
-      assignDate: a.ngay,
-      dateFrom,
-      dateTo,
-      selectedTime,
-      search: q,
-    });
-
-    // Lọc theo tìm kiếm
     if (
       q &&
       !(
@@ -194,60 +246,30 @@ const AssignPage = () => {
         (a.tenTuyenDuong || "").toLowerCase().includes(q)
       )
     ) {
-      console.log("❌ Không khớp tìm kiếm");
       return false;
     }
 
-    // Lọc theo ngày bắt đầu
     if (dateFrom) {
       const assignDate = new Date(a.ngay);
       const fromDate = new Date(dateFrom);
-
-      console.log("📅 So sánh ngày:", {
-        assignDate: assignDate.toISOString(),
-        fromDate: fromDate.toISOString(),
-        isBefore: assignDate < fromDate,
-      });
-
       if (assignDate < fromDate) {
-        console.log("❌ Ngày nhỏ hơn dateFrom");
         return false;
       }
     }
 
-    // Lọc theo ngày kết thúc
     if (dateTo) {
       const assignDate = new Date(a.ngay);
       const toDate = new Date(dateTo);
       toDate.setHours(23, 59, 59, 999);
-
-      console.log("📅 So sánh ngày kết thúc:", {
-        assignDate: assignDate.toISOString(),
-        toDate: toDate.toISOString(),
-        isAfter: assignDate > toDate,
-      });
-
       if (assignDate > toDate) {
-        console.log("❌ Ngày lớn hơn dateTo");
         return false;
       }
     }
 
-    // Lọc theo giờ
-    if (selectedTime) {
-      console.log("⏰ So sánh giờ:", {
-        assignTime: a.thoiGianDi,
-        selectedTime,
-        isMatch: a.thoiGianDi === selectedTime,
-      });
-
-      if (a.thoiGianDi !== selectedTime) {
-        console.log("❌ Giờ không khớp");
-        return false;
-      }
+    if (selectedTime && a.thoiGianDi !== selectedTime) {
+      return false;
     }
 
-    console.log("✅ Qua tất cả bộ lọc");
     return true;
   });
 
@@ -257,13 +279,13 @@ const AssignPage = () => {
   const currentAssigns = filtered.slice(startIndex, startIndex + itemsPerPage);
   const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
 
-  // Format schedule display: B) "YYYY-MM-DD | hh:mm → hh:mm"
+  // Format schedule display
   const formatScheduleOption = (s: Schedule) =>
     `${new Date(s.ngay).toISOString().split("T")[0]} | ${s.thoiGianDi} → ${
       s.thoiGianDen
     }`;
 
-  // Fallback mapping: if assign record lacks IDs, attempt to map by names
+  // Fallback mapping
   const mapAssignToIds = (a: Assign) => {
     const out = {
       maTaiXe:
@@ -301,7 +323,6 @@ const AssignPage = () => {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // validation
     if (
       !formAdd.maTaiXe ||
       !formAdd.maXeBuyt ||
@@ -313,12 +334,16 @@ const AssignPage = () => {
     }
 
     try {
-      await axios.post("http://localhost:5000/api/assignDrivers", {
+      const res = await axios.post("http://localhost:5000/api/assignDrivers", {
         maTaiXe: Number(formAdd.maTaiXe),
         maXeBuyt: Number(formAdd.maXeBuyt),
         maLichTrinh: Number(formAdd.maLichTrinh),
         maTuyenDuong: Number(formAdd.maTuyenDuong),
       });
+      if (!res.data.success) {
+        showAlert(res.data.message, "warning");
+        return;
+      }
       showAlert("Thêm phân công thành công", "success");
       setShowAddModal(false);
       fetchAssigns();
@@ -328,7 +353,7 @@ const AssignPage = () => {
     }
   };
 
-  // Show edit modal (prefill)
+  // Show edit modal
   const handleShowEdit = (a: Assign) => {
     setSelectedAssign(a);
     const mapped = mapAssignToIds(a);
@@ -338,20 +363,6 @@ const AssignPage = () => {
       maLichTrinh: mapped.maLichTrinh ? String(mapped.maLichTrinh) : "",
       maTuyenDuong: mapped.maTuyenDuong ? String(mapped.maTuyenDuong) : "",
     });
-
-    // Warning if mapping failed
-    if (
-      !mapped.maTaiXe ||
-      !mapped.maXeBuyt ||
-      !mapped.maLichTrinh ||
-      !mapped.maTuyenDuong
-    ) {
-      // showAlert(
-      //   "Lưu ý: backend chưa trả ID cho phân công; hệ thống đang cố gắng map từ tên (có thể không chính xác). Nên backend trả thêm maTaiXe, maXeBuyt, maLichTrinh, maTuyenDuong trong GET /api/assign.",
-      //   "warning"
-      // );
-    }
-
     setShowEditModal(true);
   };
 
@@ -389,7 +400,7 @@ const AssignPage = () => {
     }
   };
 
-  // Delete (mark inactive)
+  // Delete
   const handleDelete = async (id: number) => {
     if (!confirm("Bạn có chắc muốn xóa (ngừng hoạt động) phân công này?"))
       return;
@@ -403,7 +414,7 @@ const AssignPage = () => {
     }
   };
 
-  // Thêm hàm reset tất cả bộ lọc
+  // Reset filters
   const resetFilters = () => {
     setDateFrom("");
     setDateTo("");
@@ -414,7 +425,7 @@ const AssignPage = () => {
     setCurrentPage(1);
   };
 
-  // Utility: format display date
+  // Format date
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString("vi-VN");
@@ -435,6 +446,7 @@ const AssignPage = () => {
             Tạo phân công
           </Button>
         </div>
+
         {alert.show && (
           <div
             className="position-fixed bottom-0 end-0 p-3"
@@ -445,6 +457,7 @@ const AssignPage = () => {
             </Alert>
           </div>
         )}
+
         <Card className="mb-4">
           <Card.Body>
             <Row className="align-items-end">
@@ -490,7 +503,6 @@ const AssignPage = () => {
                         }}
                       >
                         <option value="">Tất cả giờ</option>
-                        {/* Tạo danh sách giờ tự động từ dữ liệu */}
                         {Array.from(new Set(schedules.map((s) => s.thoiGianDi)))
                           .sort()
                           .map((time) => (
@@ -529,7 +541,6 @@ const AssignPage = () => {
               </Col>
             </Row>
 
-            {/* Hiển thị thông tin lọc */}
             <Row className="mt-2">
               <Col>
                 <Alert variant="info" className="py-2 mb-0">
@@ -545,61 +556,76 @@ const AssignPage = () => {
             </Row>
           </Card.Body>
         </Card>
+
         <div className="table-container">
           <Table striped bordered hover className="shadow-sm no-border-table">
             <thead>
               <tr style={{ border: "none" }}>
                 <th>Mã chuyến</th>
                 <th>Tài xế</th>
-                <th>Biển số </th>
+                <th>Biển số</th>
                 <th>Ngày</th>
                 <th>Giờ</th>
                 <th>Tuyến đường</th>
+                <th>Trạng thái</th>
                 <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
               {currentAssigns.length > 0 ? (
-                currentAssigns.map((a) => (
-                  <tr key={a.maChuyenXe}>
-                    <td>
-                      <Badge bg="secondary">#{a.maChuyenXe}</Badge>
-                    </td>
-                    <td>{a.tenTaiXe}</td>
-                    <td>{a.bienSoXe}</td>
-                    <td>{formatDate(a.ngay)}</td>
-                    <td>
-                      {a.thoiGianDi} → {a.thoiGianDen}
-                    </td>
-                    <td>{a.tenTuyenDuong}</td>
-                    <td>
-                      <Button
-                        variant="outline-warning"
-                        size="sm"
-                        className="me-2 mb-1"
-                        style={{ border: "none" }}
-                        onClick={() => handleShowEdit(a)}
-                        title="Sửa"
-                      >
-                        <FaEdit size={20} />
-                      </Button>
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        className="mb-1"
-                        style={{ border: "none" }}
-                        onClick={() => {
-                          handleDelete(a.maChuyenXe).then(() => {
-                            resetFilters();
-                          });
-                        }}
-                        title="Xóa"
-                      >
-                        <FaTrash size={20} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
+                currentAssigns.map((a) => {
+                  return (
+                    <tr key={a.maChuyenXe}>
+                      <td>
+                        <Badge bg="secondary">#{a.maChuyenXe}</Badge>
+                      </td>
+                      <td>{a.tenTaiXe}</td>
+                      <td>{a.bienSoXe}</td>
+                      <td>{formatDate(a.ngay)}</td>
+                      <td>
+                        {a.thoiGianDi} → {a.thoiGianDen}
+                      </td>
+                      <td>{a.tenTuyenDuong}</td>
+                      <td>
+                        <span
+                          className={`badge ${getStatusBadgeVariant(
+                            a.trangThai
+                          )}`}
+                        >
+                          {getStatusDisplayName(a.trangThai)}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="d-flex justify-content-center gap-1">
+                          <Button
+                            variant="outline-warning"
+                            size="sm"
+                            className="me-2 mb-1"
+                            style={{ border: "none" }}
+                            onClick={() => handleShowEdit(a)}
+                            title="Sửa"
+                          >
+                            <FaEdit size={20} />
+                          </Button>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            className="mb-1"
+                            style={{ border: "none" }}
+                            onClick={() => {
+                              handleDelete(a.maChuyenXe).then(() => {
+                                resetFilters();
+                              });
+                            }}
+                            title="Xóa"
+                          >
+                            <FaTrash size={20} />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={8} className="text-center">
@@ -610,6 +636,7 @@ const AssignPage = () => {
             </tbody>
           </Table>
         </div>
+
         {totalPages > 1 && (
           <div className="d-flex justify-content-center">
             <Pagination>
@@ -635,6 +662,7 @@ const AssignPage = () => {
             </Pagination>
           </div>
         )}
+
         {/* Modal Add */}
         <Modal
           show={showAddModal}
@@ -670,7 +698,7 @@ const AssignPage = () => {
                   }
                   required
                 >
-                  <option value="">Chọn tài xế </option>
+                  <option value="">Chọn tài xế</option>
                   {drivers.map((d) => (
                     <option key={d.maTaiXe} value={d.maTaiXe}>
                       {d.tenTaiXe}
@@ -689,8 +717,8 @@ const AssignPage = () => {
                   }
                   required
                 >
-                  <option value="">Chọn xe </option>
-                  {buses.map((b) => (
+                  <option value="">Chọn xe</option>
+                  {(buses || []).map((b) => (
                     <option key={b.maXeBuyt} value={b.maXeBuyt}>
                       {b.bienSoXe}
                     </option>
@@ -710,7 +738,7 @@ const AssignPage = () => {
                   }
                   required
                 >
-                  <option value="">Chọn lịch trình </option>
+                  <option value="">Chọn lịch trình</option>
                   {schedules.map((s) => (
                     <option key={s.maLichTrinh} value={s.maLichTrinh}>
                       {formatScheduleOption(s)}
@@ -731,7 +759,7 @@ const AssignPage = () => {
                   }
                   required
                 >
-                  <option value="">Chọn tuyến đường </option>
+                  <option value="">Chọn tuyến đường</option>
                   {routes.map((r) => (
                     <option key={r.maTuyenDuong} value={r.maTuyenDuong}>
                       {r.tenTuyenDuong}
@@ -755,6 +783,7 @@ const AssignPage = () => {
             </div>
           </Form>
         </Modal>
+
         {/* Modal Edit */}
         <Modal
           show={showEditModal}
@@ -789,7 +818,7 @@ const AssignPage = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Xe (Buyt) *</Form.Label>
+                    <Form.Label>Xe buýt *</Form.Label>
                     <Form.Select
                       value={formEdit.maXeBuyt}
                       onChange={(e) =>

@@ -49,22 +49,27 @@ const removeUser = (req, res) => {
 
 const createUser = (req, res) => {
   const user = req.body;
+
   userService.addUser(user, (err, result) => {
     if (err) {
-      console.error("🚨 Lỗi trong API:", err);
-
-      // TRẢ VỀ LỖI CHI TIẾT CHO FRONTEND
       return res.status(500).json({
         success: false,
         message: "Lỗi server khi thêm tài khoản",
-        errorDetail: {
-          code: err.code,
-          sqlMessage: err.sqlMessage,
-          fullError: err.toString(),
-        },
+        errorDetail: err,
       });
     }
-    res.json({ message: "Thêm thành công", id: result.insertId });
+
+    // ⛔ Nếu username tồn tại → trả exists cho frontend
+    if (result.exists) {
+      return res.json({ exists: true });
+    }
+
+    // ✅ Nếu thêm thành công
+    res.json({
+      success: true,
+      message: "Thêm thành công",
+      id: result.taiKhoan?.insertId,
+    });
   });
 };
 
@@ -91,6 +96,33 @@ const unblockUser = (req, res) => {
     res.json({ message: "Tài khoản đã được mở khóa" });
   });
 };
+// Đăng nhập
+const login = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu",
+      });
+    }
+
+    const user = await userService.loginUser(username, password);
+
+    res.json({
+      success: true,
+      message: "Đăng nhập thành công",
+      user: user,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi đăng nhập:", error.message);
+    res.status(401).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 module.exports = {
   getUsers,
@@ -99,4 +131,5 @@ module.exports = {
   editUser,
   blockUser,
   unblockUser,
+  login,
 };

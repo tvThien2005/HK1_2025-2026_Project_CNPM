@@ -79,32 +79,53 @@ const removeAssign = (req, res) => {
 };
 
 const createAssign = (req, res) => {
-  const user = req.body;
-  assignDriver.addAssignDriver(user, (err, result) => {
-    if (err) {
-      console.error("🚨 Lỗi trong API:", err);
+  const assign = req.body;
 
-      // TRẢ VỀ LỖI CHI TIẾT CHO FRONTEND
-      return res.status(500).json({
+  assignDriver.addAssignDriver(assign, (err, result) => {
+    if (err) {
+      console.error("Lỗi server:", err);
+      return res.status(200).json({
         success: false,
         message: "Lỗi server khi thêm phân công",
-        errorDetail: {
-          code: err.code,
-          sqlMessage: err.sqlMessage,
-          fullError: err.toString(),
-        },
       });
     }
-    res.json({ message: "Thêm thành công", id: result.insertId });
+
+    // Nếu bị trùng
+    if (result.conflict) {
+      return res.status(200).json({
+        success: false,
+        message: result.message,
+      });
+    }
+
+    // Thành công
+    res.status(200).json({
+      success: true,
+      message: "Thêm phân công thành công",
+      id: result.results.insertId,
+    });
   });
 };
 
 const editAssign = (req, res) => {
   const id = req.params.id;
-  const user = req.body;
-  assignDriver.updateAssignDriver(id, user, (err) => {
-    if (err) return res.status(500).json({ error: "Lỗi khi cập nhật" });
-    res.json({ message: "Cập nhật thành công" });
+  const assign = req.body;
+  assignDriver.updateAssignDriver(id, assign, (err, results) => {
+    if (err) {
+      if (err.code === "CANNOT_DECREASE_STATUS") {
+        return res.status(409).json({ success: false, message: err.message });
+      }
+      if (err.code === "INVALID_STATUS") {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+      console.error(err);
+      return res.status(500).json({
+        success: false,
+        message: "Lỗi khi cập nhật",
+        errorDetail: err.message,
+      });
+    }
+    res.json({ message: "Cập nhật thành công", data: results });
   });
 };
 

@@ -11,10 +11,17 @@ import NavDropdown from "react-bootstrap/NavDropdown";
 import Dropdown from "react-bootstrap/Dropdown";
 import Button from "react-bootstrap/Button";
 import { FaUserCircle, FaSignOutAlt } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 
 const Header = () => {
+  const router = useRouter();
   const isLoggedIn = true;
   const userName = "Văn Thiện";
+
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    router.push("/sign-in");
+  };
 
   return (
     <Navbar
@@ -45,7 +52,7 @@ const Header = () => {
 
                 <Dropdown.Divider />
 
-                <NavDropdown.Item href="#logout">
+                <NavDropdown.Item href="sign-in">
                   <Button variant="warning" className="w-100 text-start">
                     <span className="d-flex align-items-center">
                       <FaSignOutAlt className="me-2" />

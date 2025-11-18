@@ -98,7 +98,7 @@ const UsersPage = () => {
     setFormData({
       tenDangNhap: "",
       matKhau: "",
-      capDo: "Parent",
+      capDo: "Manager",
       hoTen: "",
     });
     setShowAddModal(true);
@@ -109,7 +109,7 @@ const UsersPage = () => {
     setSelectedUser(user);
     setFormData1({
       tenDangNhap: user.tenDangNhap,
-      matKhau: user.matKhau.split("T")[0],
+      matKhau: user.matKhau,
       capDo: user.capDo,
     });
     setShowEditModal(true);
@@ -183,10 +183,14 @@ const UsersPage = () => {
     if (!validateForm()) return;
 
     try {
-      await axios.post("http://localhost:5000/api/users", {
+      const response = await axios.post("http://localhost:5000/api/users", {
         ...formData,
         trangThai: "Hoạt động", // Trạng thái mặc định
       });
+      if (response.data.exists) {
+        showAlert("Tên đăng nhập đã tồn tại!", "danger");
+        return;
+      }
       fetchUsers();
       handleCloseModal();
       showAlert("Thêm tài khoản thành công", "success");

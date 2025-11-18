@@ -21,35 +21,56 @@ const deleteUser = (id, callback) => {
     }
   );
 };
-
+const checkUsernameExists = (username, callback) => {
+  db.query(
+    "SELECT COUNT(*) AS count FROM taiKhoan WHERE tenDangNhap = ?",
+    [username],
+    (err, results) => {
+      if (err) return callback(null, false);
+      callback(null, results[0].count > 0);
+    }
+  );
+};
 const addUser = (user, callback) => {
   const { tenDangNhap, matKhau, capDo, hoTen } = user;
 
-  const ngayTao = new Date().toISOString().slice(0, 10);
-  const trangThai = "Active";
-  const tinhTrang = "mở khóa";
-  db.query(
-    "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai,tinhTrang) VALUES (?, ?, ?, ?, ?,?)",
-    [tenDangNhap, matKhau, ngayTao, capDo, trangThai, tinhTrang],
-    (err, results) => {
-      if (err) return callback(err);
-      if (results.length > 0) {
-        return callback(new Error("Tên đăng nhập đã tồn tại"));
-      }
-      const userId = results.insertId;
-      db.query(
-        "INSERT INTO quanLyXe(tenQuanLyXe,soDienThoai,ngaySinh,trangThai,maTaiKhoan) VALUES (?, ?,?,?,?)",
-        [hoTen, tenDangNhap, matKhau, trangThai, userId],
-        (err2, results2) => {
-          if (err2) {
-            console.error("SQL Error:", err2);
-            return callback(err2);
-          }
-          callback(null, { taiKhoan: results, quanLyXe: results2 });
-        }
-      );
+  // 1️⃣ Kiểm tra username trước khi thêm
+  checkUsernameExists(tenDangNhap, (err, exists) => {
+    if (exists) {
+      return callback(null, { exists: true });
     }
-  );
+
+    // 2️⃣ Nếu không tồn tại → thêm mới
+    const now = new Date();
+    const ngayTao =
+      now.getFullYear() +
+      "-" +
+      String(now.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(now.getDate()).padStart(2, "0");
+
+    const trangThai = "Active";
+    const tinhTrang = "1";
+
+    db.query(
+      "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai, tinhTrang) VALUES (?, ?, ?, ?, ?, ?)",
+      [tenDangNhap, matKhau, ngayTao, capDo, trangThai, tinhTrang],
+      (err, results) => {
+        if (err) return callback(err);
+
+        const userId = results.insertId;
+
+        db.query(
+          "INSERT INTO quanLyXe (tenQuanLyXe, soDienThoai, ngaySinh, trangThai, maTaiKhoan) VALUES (?, ?, ?, ?, ?)",
+          [hoTen, tenDangNhap, matKhau, trangThai, userId],
+          (err2, results2) => {
+            if (err2) return callback(err2);
+            callback(null, { taiKhoan: results, quanLyXe: results2 });
+          }
+        );
+      }
+    );
+  });
 };
 
 const updateUser = (id, user, callback) => {
@@ -94,6 +115,35 @@ const unblockUser = (id, callback) => {
   );
 };
 
+// Đăng nhập - kiểm tra tài khoản
+const loginUser = (username, password) => {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "SELECT * FROM taiKhoan WHERE tenDangNhap = ? AND matKhau = ? AND trangThai = 'Active' AND tinhTrang = 1 AND capDo = 'Manager'",
+      [username, password],
+      (err, results) => {
+        if (err) {
+          console.error("❌ Lỗi truy vấn đăng nhập:", err);
+          return reject(err);
+        }
+
+        if (results.length === 0) {
+          console.log("❌ Không tìm thấy user:", username, password);
+          return reject(new Error("Tên đăng nhập hoặc mật khẩu không đúng"));
+        }
+
+        const user = results[0];
+        resolve({
+          maTaiKhoan: user.maTaiKhoan,
+          tenDangNhap: user.tenDangNhap,
+          capDo: user.capDo,
+          trangThai: user.trangThai,
+        });
+      }
+    );
+  });
+};
+
 module.exports = {
   getAllUsers,
   deleteUser,
@@ -101,4 +151,6 @@ module.exports = {
   updateUser,
   blockUser,
   unblockUser,
+  loginUser,
+  checkUsernameExists,
 };

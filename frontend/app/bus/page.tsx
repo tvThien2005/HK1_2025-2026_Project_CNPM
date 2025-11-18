@@ -1,264 +1,505 @@
 "use client";
-import React, { useState, useEffect, FormEvent } from "react";
-import axios from "axios";
-import { Container, Table, Button, Modal, Form } from "react-bootstrap";
-import Layout from "../../components/Layout";
-import { FaSearch } from "react-icons/fa";
 
-interface Vehicle {
-  maXe: string;
-  bienSo: string;
+import React, { useState, useEffect } from "react";
+import {
+  Container,
+  Row,
+  Col,
+  Table,
+  Button,
+  Modal,
+  Form,
+  InputGroup,
+  Alert,
+  Pagination,
+  Badge,
+} from "react-bootstrap";
+import Head from "next/head";
+import { FaEdit, FaTrash, FaLock, FaUnlock } from "react-icons/fa";
+import axios from "axios";
+
+interface Bus {
+  maXeBuyt: number;
+  bienSoXe: string;
   sucChua: number;
   mauXe: string;
   trangThai: string;
 }
 
-// Dữ liệu giả để hiển thị giao diện
-const MOCK_VEHICLES: Vehicle[] = [
-  {
-    maXe: "X01",
-    bienSo: "51K-123.45",
-    sucChua: 40,
-    mauXe: "Hyundai",
-    trangThai: "Hoạt động",
-  },
-  {
-    maXe: "X02",
-    bienSo: "51K-678.90",
-    sucChua: 45,
-    mauXe: "Mercedes",
-    trangThai: "Ngừng hoạt động",
-  },
-  {
-    maXe: "X03",
-    bienSo: "51K-111.22",
-    sucChua: 35,
-    mauXe: "Ford",
-    trangThai: "Hoạt động",
-  },
-];
+interface BusForm {
+  bienSoXe: string;
+  sucChua: string;
+  mauXe: string;
+}
 
-const VehiclesPage = () => {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(null);
-  const [formData, setFormData] = useState<Vehicle>({
-    maXe: "",
-    bienSo: "",
-    sucChua: 0,
+const BusesPage = () => {
+  const [buses, setBuses] = useState<Bus[]>([]);
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
+  const [alert, setAlert] = useState({ show: false, message: "", type: "" });
+  const itemsPerPage = 8;
+
+  const [formData, setFormData] = useState<BusForm>({
+    bienSoXe: "",
+    sucChua: "",
     mauXe: "",
-    trangThai: "Hoạt động",
   });
 
+  const fetchBuses = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/buses");
+      // backend returns { success: true, data: buses }
+      setBuses(res.data.data || []);
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách xe:", error);
+      showAlert("Lỗi khi tải dữ liệu", "danger");
+    }
+  };
+
   useEffect(() => {
-    // Sử dụng dữ liệu giả thay vì gọi API
-    setVehicles(MOCK_VEHICLES);
+    fetchBuses();
   }, []);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const filteredVehicles = vehicles.filter((vehicle) =>
-    Object.values(vehicle).some((value) =>
-      String(value).toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
-
-  const handleShowModal = (vehicle: Vehicle | null = null) => {
-    setCurrentVehicle(vehicle);
-    if (vehicle) {
-      setFormData({
-        maXe: vehicle.maXe,
-        bienSo: vehicle.bienSo,
-        sucChua: vehicle.sucChua,
-        mauXe: vehicle.mauXe,
-        trangThai: vehicle.trangThai,
-      });
-    } else {
-      setFormData({
-        maXe: "",
-        bienSo: "",
-        sucChua: 0,
-        mauXe: "",
-        trangThai: "Hoạt động",
-      });
-    }
-    setShowModal(true);
-  };
-
-  const handleCloseModal = () => setShowModal(false);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: name === "sucChua" ? parseInt(value) || 0 : value,
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
     }));
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log("Dữ liệu đã gửi:", formData);
-    // Logic thêm/sửa dữ liệu giả tại đây (chỉ để demo)
-    if (currentVehicle) {
-      setVehicles((prev) =>
-        prev.map((v) => (v.maXe === currentVehicle.maXe ? { ...formData } : v))
-      );
-    } else {
-      setVehicles((prev) => [...prev, { ...formData }]);
+  const validateForm = () => {
+    if (!formData.bienSoXe.trim()) {
+      showAlert("Vui lòng nhập biển số xe", "warning");
+      return false;
     }
-    handleCloseModal();
+    if (!formData.sucChua.trim() || isNaN(Number(formData.sucChua))) {
+      showAlert("Vui lòng nhập sức chứa hợp lệ (số)", "warning");
+      return false;
+    }
+    if (!formData.mauXe.trim()) {
+      showAlert("Vui lòng nhập màu xe", "warning");
+      return false;
+    }
+    return true;
   };
 
-  const handleDelete = (maXe: string) => {
-    console.log("Xóa xe có mã:", maXe);
-    // Logic xóa dữ liệu giả
-    setVehicles((prev) => prev.filter((v) => v.maXe !== maXe));
+  const handleShowAddModal = () => {
+    setFormData({ bienSoXe: "", sucChua: "", mauXe: "" });
+    setShowAddModal(true);
+  };
+
+  const handleShowEditModal = (bus: Bus) => {
+    setSelectedBus(bus);
+    setFormData({
+      bienSoXe: bus.bienSoXe,
+      sucChua: String(bus.sucChua),
+      mauXe: bus.mauXe,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setShowEditModal(false);
+    setSelectedBus(null);
+  };
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    try {
+      const payload = {
+        bienSoXe: formData.bienSoXe.trim(),
+        sucChua: Number(formData.sucChua),
+        mauXe: formData.mauXe.trim(),
+        trangThai: "Active",
+      };
+      await axios.post("http://localhost:5000/api/buses", payload);
+      fetchBuses();
+      handleCloseModal();
+      showAlert("Thêm xe thành công", "success");
+    } catch (error: any) {
+      console.error("Lỗi khi thêm xe:", error);
+      showAlert(error.response?.data?.error || "Lỗi khi thêm xe", "danger");
+    }
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm() || !selectedBus) return;
+    try {
+      const payload = {
+        bienSoXe: formData.bienSoXe.trim(),
+        sucChua: Number(formData.sucChua),
+        mauXe: formData.mauXe.trim(),
+        trangThai: selectedBus.trangThai,
+      };
+      await axios.put(
+        `http://localhost:5000/api/buses/${selectedBus.maXeBuyt}`,
+        payload
+      );
+      fetchBuses();
+      handleCloseModal();
+      showAlert("Cập nhật xe thành công", "success");
+    } catch (error: any) {
+      console.error("Lỗi khi cập nhật xe:", error);
+      showAlert(error.response?.data?.error || "Lỗi khi cập nhật xe", "danger");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Bạn có chắc muốn xóa xe này?")) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/buses/${id}`);
+      setBuses(buses.filter((b) => b.maXeBuyt !== id));
+      showAlert("Xóa xe thành công", "success");
+    } catch (error) {
+      console.error("Lỗi khi xóa xe:", error);
+      showAlert("Lỗi khi xóa xe", "danger");
+    }
+  };
+
+  const handleBlock = async (id: number) => {
+    if (!confirm("Bạn có chắc muốn khóa xe này?")) return;
+    try {
+      await axios.patch(`http://localhost:5000/api/buses/${id}/block`);
+      fetchBuses();
+      showAlert("Khóa xe thành công", "success");
+    } catch (error) {
+      console.error("Lỗi khi khóa xe:", error);
+      showAlert("Lỗi khi khóa xe", "danger");
+    }
+  };
+
+  const handleUnblock = async (id: number) => {
+    if (!confirm("Bạn có chắc muốn mở khóa xe này?")) return;
+    try {
+      await axios.patch(`http://localhost:5000/api/buses/${id}/unblock`);
+      fetchBuses();
+      showAlert("Mở khóa xe thành công", "success");
+    } catch (error) {
+      console.error("Lỗi khi mở khóa xe:", error);
+      showAlert("Lỗi khi mở khóa xe", "danger");
+    }
+  };
+
+  const showAlert = (message: string, type: string) => {
+    setAlert({ show: true, message, type });
+    setTimeout(() => {
+      setAlert({ show: false, message: "", type: "" });
+    }, 3000);
+  };
+
+  const filtered = buses.filter(
+    (u) =>
+      (u.bienSoXe || "").toLowerCase().includes(search.toLowerCase()) ||
+      (u.mauXe || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentItems = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+  const pageNumbers = [];
+  for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
   };
 
   return (
     <>
-      <Container>
-        <h1 className="my-4">Quản Lí Xe Buýt</h1>
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <div className="input-group" style={{ maxWidth: "400px" }}>
-            <span className="input-group-text">
-              <FaSearch />
-            </span>
-            <Form.Control
-              type="text"
-              placeholder="Tìm kiếm..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-            />
-          </div>
-          <Button variant="primary" onClick={() => handleShowModal()}>
-            Thêm Xe Mới
-          </Button>
-        </div>
+      <Head>
+        <title>Quản lý xe buýt | Admin Bus Tracking</title>
+      </Head>
+      <Container fluid>
+        <h2 className="my-4">Quản lý xe buýt</h2>
 
-        <Table striped bordered hover responsive>
-          <thead>
-            <tr>
-              <th>Mã Xe</th>
-              <th>Biển Số</th>
-              <th>Sức Chứa</th>
-              <th>Mẫu Xe</th>
-              <th>Trạng Thái</th>
-              <th>Hành Động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredVehicles.length > 0 ? (
-              filteredVehicles.map((vehicle) => (
-                <tr key={vehicle.maXe}>
-                  <td>{vehicle.maXe}</td>
-                  <td>{vehicle.bienSo}</td>
-                  <td>{vehicle.sucChua}</td>
-                  <td>{vehicle.mauXe}</td>
-                  <td>{vehicle.trangThai}</td>
-                  <td>
-                    <Button
-                      variant="warning"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => handleShowModal(vehicle)}
-                    >
-                      Sửa
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(vehicle.maXe)}
-                    >
-                      Xóa
-                    </Button>
+        {alert.show && (
+          <Alert variant={alert.type} className="mb-3">
+            {alert.message}
+          </Alert>
+        )}
+
+        <Row className="align-items-center mb-3">
+          <Col md={6}>
+            <InputGroup>
+              <Form.Control
+                placeholder="Tìm kiếm theo biển số hoặc màu xe..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <Button variant="secondary" onClick={() => setSearch("")}>
+                Xóa
+              </Button>
+            </InputGroup>
+          </Col>
+          <Col md={6} className="text-end">
+            <Button variant="primary" onClick={handleShowAddModal}>
+              Thêm xe mới
+            </Button>
+          </Col>
+        </Row>
+
+        <div className="table-container">
+          <Table
+            striped
+            bordered
+            hover
+            className="shadow-sm text-center no-border-table"
+            style={{ verticalAlign: "middle", textAlign: "center" }}
+          >
+            <thead>
+              <tr style={{ border: "none" }}>
+                <th>Mã xe</th>
+                <th>Biển số</th>
+                <th>Sức chứa</th>
+                <th>Màu xe</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentItems.length > 0 ? (
+                currentItems.map((bus) => (
+                  <tr key={bus.maXeBuyt}>
+                    <td>
+                      <Badge bg="secondary">#{bus.maXeBuyt}</Badge>
+                    </td>
+                    <td>{bus.bienSoXe}</td>
+                    <td>{bus.sucChua}</td>
+                    <td>{bus.mauXe}</td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          bus.trangThai === "Active"
+                            ? "bg-success"
+                            : "bg-danger"
+                        }`}
+                      >
+                        {bus.trangThai}
+                      </span>
+                    </td>
+                    <td>
+                      <Button
+                        variant="outline-warning"
+                        size="sm"
+                        className="me-2 mb-1"
+                        style={{ border: "none" }}
+                        onClick={() => handleShowEditModal(bus)}
+                        title="Sửa"
+                      >
+                        <FaEdit size={18} />
+                      </Button>
+                      {/* 
+                      {bus.trangThai === "Active" ? (
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          className="me-2 mb-1"
+                          style={{ border: "none" }}
+                          onClick={() => handleBlock(bus.maXeBuyt)}
+                          title="Khóa"
+                        >
+                          <FaLock size={16} />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline-success"
+                          size="sm"
+                          className="me-2 mb-1"
+                          style={{ border: "none" }}
+                          onClick={() => handleUnblock(bus.maXeBuyt)}
+                          title="Mở khóa"
+                        >
+                          <FaUnlock size={16} />
+                        </Button>
+                      )} */}
+
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        className="mb-1"
+                        style={{ border: "none" }}
+                        onClick={() => handleDelete(bus.maXeBuyt)}
+                        title="Xóa"
+                      >
+                        <FaTrash size={18} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="text-center">
+                    Không có dữ liệu
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={6} className="text-center">
-                  Không tìm thấy xe nào.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </Table>
+              )}
+            </tbody>
+          </Table>
+        </div>
 
-        <Modal show={showModal} onHide={handleCloseModal}>
-          <Modal.Header closeButton>
-            <Modal.Title>
-              {currentVehicle ? "Sửa Thông Tin Xe" : "Thêm Xe Mới"}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form onSubmit={handleSubmit}>
-              <Form.Group className="mb-3">
-                <Form.Label>Mã Xe</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="maXe"
-                  value={formData.maXe}
-                  // onChange={handleChange}
-                  required
-                  disabled={!!currentVehicle}
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Biển Số</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="bienSo"
-                  value={formData.bienSo}
-                  // onChange={handleChange}
-                  required
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Sức Chứa</Form.Label>
-                <Form.Control
-                  type="number"
-                  name="sucChua"
-                  value={formData.sucChua}
-                  // onChange={handleChange}
-                  required
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Mẫu Xe</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="mauXe"
-                  value={formData.mauXe}
-                  // onChange={handleChange}
-                  required
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Trạng Thái</Form.Label>
-                <Form.Select
-                  name="trangThai"
-                  value={formData.trangThai}
-                  onChange={handleChange}
+        {totalPages > 1 && (
+          <div className="d-flex justify-content-center">
+            <Pagination>
+              <Pagination.Prev
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+              />
+              {pageNumbers.map((number) => (
+                <Pagination.Item
+                  key={number}
+                  active={number === currentPage}
+                  onClick={() => handlePageChange(number)}
                 >
-                  <option value="Hoạt động">Hoạt động</option>
-                  <option value="Ngừng hoạt động">Ngừng hoạt động</option>
-                </Form.Select>
-              </Form.Group>
-              <Button variant="primary" type="submit">
-                {currentVehicle ? "Lưu Thay Đổi" : "Thêm Xe"}
+                  {number}
+                </Pagination.Item>
+              ))}
+              <Pagination.Next
+                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
+              />
+            </Pagination>
+          </div>
+        )}
+
+        {/* Modal Thêm xe */}
+        <Modal show={showAddModal} onHide={handleCloseModal} size="lg">
+          <Modal.Header closeButton>
+            <Modal.Title>Thêm xe buýt mới</Modal.Title>
+          </Modal.Header>
+          <Form onSubmit={handleAdd}>
+            <Modal.Body>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Biển số *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="bienSoXe"
+                      value={formData.bienSoXe}
+                      onChange={handleInputChange}
+                      placeholder="Nhập biển số"
+                      required
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label>Sức chứa *</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="sucChua"
+                      value={formData.sucChua}
+                      onChange={handleInputChange}
+                      placeholder="Số lượng chỗ ngồi"
+                      required
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label>Màu xe *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="mauXe"
+                      value={formData.mauXe}
+                      onChange={handleInputChange}
+                      placeholder="Ví dụ: Trắng, Xanh..."
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={handleCloseModal}>
+                Hủy
               </Button>
-            </Form>
-          </Modal.Body>
+              <Button variant="primary" type="submit">
+                Thêm xe
+              </Button>
+            </Modal.Footer>
+          </Form>
+        </Modal>
+
+        {/* Modal Sửa xe */}
+        <Modal show={showEditModal} onHide={handleCloseModal} size="lg">
+          <Modal.Header closeButton>
+            <Modal.Title>Sửa thông tin xe</Modal.Title>
+          </Modal.Header>
+          <Form onSubmit={handleEdit}>
+            <Modal.Body>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Biển số *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="bienSoXe"
+                      value={formData.bienSoXe}
+                      onChange={handleInputChange}
+                      placeholder="Nhập biển số"
+                      required
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label>Sức chứa *</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="sucChua"
+                      value={formData.sucChua}
+                      onChange={handleInputChange}
+                      placeholder="Số lượng chỗ ngồi"
+                      required
+                    />
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label>Màu xe *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="mauXe"
+                      value={formData.mauXe}
+                      onChange={handleInputChange}
+                      placeholder="Ví dụ: Trắng, Xanh..."
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+
+                <Col md={6}>
+                  {selectedBus && (
+                    <div className="bg-light p-3 rounded">
+                      <small className="text-muted">
+                        <strong>Thông tin hệ thống:</strong>
+                        <br />
+                        Mã xe: {selectedBus.maXeBuyt}
+                        <br />
+                        Trạng thái: {selectedBus.trangThai}
+                      </small>
+                    </div>
+                  )}
+                </Col>
+              </Row>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={handleCloseModal}>
+                Hủy
+              </Button>
+              <Button variant="primary" type="submit">
+                Cập nhật
+              </Button>
+            </Modal.Footer>
+          </Form>
         </Modal>
       </Container>
     </>
   );
 };
 
-export default VehiclesPage;
+export default BusesPage;

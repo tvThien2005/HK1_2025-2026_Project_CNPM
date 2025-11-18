@@ -393,28 +393,28 @@ export default function NotificationPage() {
   );
 
   // Hiển thị loading ban đầu
-  if (!isClient) {
-    return (
-      <div className="container-fluid py-4">
-        {alert.show && (
-          <Alert
-            variant={alert.type === "success" ? "success" : "danger"}
-            className="position-fixed top-0 start-50 translate-middle-x mt-3"
-            style={{ zIndex: 9999, minWidth: "300px" }}
-          >
-            {alert.message}
-          </Alert>
-        )}
-        <div
-          className="d-flex justify-content-center align-items-center"
-          style={{ height: "50vh" }}
-        >
-          <Spinner animation="border" variant="primary" />
-          <span className="ms-3">Đang tải...</span>
-        </div>
-      </div>
-    );
-  }
+  // if (!isClient) {
+  //   return (
+  //     <div className="container-fluid py-4">
+  //       {alert.show && (
+  //         <Alert
+  //           variant={alert.type === "success" ? "success" : "danger"}
+  //           className="position-fixed top-0 start-50 translate-middle-x mt-3"
+  //           style={{ zIndex: 9999, minWidth: "300px" }}
+  //         >
+  //           {alert.message}
+  //         </Alert>
+  //       )}
+  //       <div
+  //         className="d-flex justify-content-center align-items-center"
+  //         style={{ height: "50vh" }}
+  //       >
+  //         <Spinner animation="border" variant="primary" />
+  //         <span className="ms-3">Đang tải...</span>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="container-fluid py-4">
@@ -674,10 +674,9 @@ export default function NotificationPage() {
           backdrop="static"
         >
           <Modal.Header closeButton>
-            <Modal.Title className="d-flex align-items-center">
-              <FaPaperPlane className="me-2" />
-              Gửi thông báo mới
-            </Modal.Title>
+            <div className="w-100 d-flex justify-content-center align-items-center">
+              <h3>Gửi thông báo mới</h3>
+            </div>
           </Modal.Header>
 
           <Modal.Body>
