@@ -118,3 +118,44 @@ exports.getCurrentPositions = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+// trackingController.js - Thêm các API mới
+
+// API lấy dữ liệu với trạm
+exports.getAllBusDataWithStations = async (req, res) => {
+  try {
+    const data = await trackingService.getAllBusDataWithStations();
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("❌ Lỗi getAllBusDataWithStations:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Các API riêng lẻ cho trạm
+exports.getDiemDung = async (req, res) => {
+  try {
+    const diemDung = await trackingService.getDiemDung();
+    res.json({ success: true, data: diemDung });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+exports.getPhanBoHocSinhTram = async (req, res) => {
+  try {
+    const phanBo = await trackingService.getPhanBoHocSinhTram();
+    res.json({ success: true, data: phanBo });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+exports.getPhanBoTramXe = async (req, res) => {
+  try {
+    const phanBo = await trackingService.getPhanBoTramXe();
+    res.json({ success: true, data: phanBo });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

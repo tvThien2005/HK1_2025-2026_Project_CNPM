@@ -7,8 +7,10 @@ import {
   Polyline,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { Bus } from "../types/bus";
+import { Bus, Station } from "../types/bus";
 import L from "leaflet";
+import { useState, useEffect } from "react";
+import { Badge } from "react-bootstrap";
 
 // Fix marker icons trong React
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -25,45 +27,343 @@ interface MapProps {
   buses?: Bus[];
   selectedBus?: Bus | null;
   onBusSelect?: (bus: Bus | null) => void;
-  onStudentPickup?: (studentId: string) => void;
+  onStationPickup?: (stationId: string) => void;
 }
 
-const svgToDataUrl = (svg: string) => {
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+// ✅ ĐIỂM TẬP TRUNG MẶC ĐỊNH
+const RALLY_POINT = {
+  name: "Điểm tập trung xe buýt",
+  position: { lat: 10.762622, lng: 106.680172 },
+  description: "Tất cả xe xuất phát từ đây",
 };
 
 const BusMap: React.FC<MapProps> = ({
   buses = [],
   selectedBus = null,
   onBusSelect,
-  onStudentPickup,
+  onStationPickup,
 }) => {
-  const center: [number, number] = [10.762622, 106.660172];
+  const [routePaths, setRoutePaths] = useState<{
+    [key: string]: [number, number][];
+  }>({});
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
 
-  // Hàm kiểm tra xem học sinh đã được đón chưa
-  const isStudentPickedUp = (studentId: string): boolean => {
-    if (!selectedBus) return false;
-    return selectedBus.pickedUpStudents?.includes(studentId) || false;
+  // ✅ Parse và validate tọa độ
+  const parseCoordinate = (value: any): number | null => {
+    if (value === null || value === undefined) return null;
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    return isNaN(num) ? null : num;
   };
 
-  // Hàm xử lý khi click vào marker học sinh
-  const handleStudentMarkerClick = (studentId: string) => {
-    if (onStudentPickup && !isStudentPickedUp(studentId)) {
-      onStudentPickup(studentId);
+  // ✅ Tính center của map dựa trên xe được chọn
+  const getMapCenter = (): [number, number] => {
+    if (selectedBus) {
+      const lat = parseCoordinate(selectedBus.position.lat);
+      const lng = parseCoordinate(selectedBus.position.lng);
+      if (lat !== null && lng !== null) {
+        return [lat, lng];
+      }
+    }
+
+    // Default: Điểm tập trung
+    return [RALLY_POINT.position.lat, RALLY_POINT.position.lng];
+  };
+
+  // ✅ Kiểm tra trạm đã qua chưa
+  const isStationPickedUp = (stationId: string): boolean => {
+    if (!selectedBus) return false;
+    return selectedBus.pickedUpStations?.includes(stationId) || false;
+  };
+
+  // ✅ Xử lý click vào trạm
+  const handleStationMarkerClick = (stationId: string) => {
+    if (onStationPickup && !isStationPickedUp(stationId)) {
+      onStationPickup(stationId);
     }
   };
 
-  // Hàm lấy màu sắc cho bus dựa trên trạng thái
+  // ✅ Lấy màu bus theo trạng thái
   const getBusIconColor = (bus: Bus) => {
-    if (bus.route.currentStatus === "completed") return "#4CAF50"; // Xanh - hoàn thành
-    if (bus.route.currentStatus === "going_to_school") return "#2196F3"; // Xanh dương - đang đến trường
-    if (bus.route.currentStatus === "picking_up") return "#FF9800"; // Cam - đang đón học sinh
-    return "#DC2626"; // Đỏ - mặc định
+    if (bus.route.currentStatus === "completed") return "#4CAF50";
+    if (bus.route.currentStatus === "going_to_school") return "#2196F3";
+    if (bus.route.currentStatus === "picking_up") return "#FF9800";
+    return "#9E9E9E";
   };
 
-  // Tạo icon bus động với màu sắc theo trạng thái - ĐÃ SỬA
+  // ✅ Gọi OSRM API để lấy đường đi thực tế
+  const getRouteFromOSRM = async (
+    start: [number, number],
+    end: [number, number],
+    retries = 2
+  ): Promise<[number, number][]> => {
+    // Nếu 2 điểm quá gần, trả về đường thẳng
+    const distance = Math.sqrt(
+      Math.pow(end[0] - start[0], 2) + Math.pow(end[1] - start[1], 2)
+    );
+    if (distance < 0.001) {
+      return [start, end];
+    }
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const coordinates = `${start[1]},${start[0]};${end[1]},${end[0]}`;
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+        }, 5000); // Giảm timeout xuống 5s
+
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.code === "Ok" && data.routes?.length > 0) {
+          const geometry = data.routes[0].geometry;
+          const route = geometry.coordinates.map(
+            (coord: [number, number]) =>
+              [coord[1], coord[0]] as [number, number]
+          );
+
+          console.log(`✅ OSRM success: ${route.length} points`);
+          return route;
+        }
+
+        throw new Error(`OSRM returned: ${data.code}`);
+      } catch (error: any) {
+        console.warn(
+          `⚠️ OSRM attempt ${attempt + 1}/${retries + 1} failed:`,
+          error.message
+        );
+
+        // Nếu là lần thử cuối, trả về đường thẳng
+        if (attempt === retries) {
+          console.log(`📍 Fallback to straight line for ${start} -> ${end}`);
+          return [start, end];
+        }
+
+        // Chờ một chút trước khi retry
+        await new Promise((resolve) =>
+          setTimeout(resolve, 500 * (attempt + 1))
+        );
+      }
+    }
+
+    // Fallback cuối cùng
+    return [start, end];
+  };
+
+  // ✅ Tính toán tất cả đường đi của xe được chọn
+  useEffect(() => {
+    if (!selectedBus) {
+      setRoutePaths({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const calculateAllRoutes = async () => {
+      setIsLoadingRoute(true);
+      const newPaths: { [key: string]: [number, number][] } = {};
+
+      try {
+        const stations = selectedBus.route.stations;
+        const busLat = parseCoordinate(selectedBus.position.lat);
+        const busLng = parseCoordinate(selectedBus.position.lng);
+
+        if (busLat === null || busLng === null) {
+          console.warn("⚠️ Invalid bus position");
+          setIsLoadingRoute(false);
+          return;
+        }
+
+        const busPos: [number, number] = [busLat, busLng];
+        const currentIndex = selectedBus.currentStationIndex || 0;
+
+        console.log(`🗺️ Calculating routes for ${selectedBus.name}...`);
+
+        // 1️⃣ Từ điểm tập trung → trạm đầu (nếu chưa bắt đầu)
+        if (
+          selectedBus.route.currentStatus === "waiting" &&
+          stations.length > 0
+        ) {
+          const firstStationLat = parseCoordinate(stations[0].position.lat);
+          const firstStationLng = parseCoordinate(stations[0].position.lng);
+
+          if (firstStationLat !== null && firstStationLng !== null) {
+            console.log("📍 Calculating: Rally Point → First Station");
+            const rallyToFirst = await getRouteFromOSRM(
+              [RALLY_POINT.position.lat, RALLY_POINT.position.lng],
+              [firstStationLat, firstStationLng]
+            );
+            if (!isCancelled) {
+              newPaths["rally-to-first"] = rallyToFirst;
+            }
+          }
+        }
+
+        // 2️⃣ Từ xe → trạm tiếp theo (đang đi)
+        if (currentIndex < stations.length && !isCancelled) {
+          const nextStation = stations[currentIndex];
+          const nextLat = parseCoordinate(nextStation.position.lat);
+          const nextLng = parseCoordinate(nextStation.position.lng);
+
+          if (nextLat !== null && nextLng !== null) {
+            console.log(`📍 Calculating: Bus → Station ${currentIndex + 1}`);
+            const currentRoute = await getRouteFromOSRM(busPos, [
+              nextLat,
+              nextLng,
+            ]);
+            if (!isCancelled) {
+              newPaths["current"] = currentRoute;
+            }
+          }
+        }
+
+        // 3️⃣ Các đoạn giữa các trạm còn lại (giới hạn tối đa 3 đoạn)
+        const maxFutureSegments = Math.min(3, stations.length - 1);
+        for (
+          let i = currentIndex;
+          i < currentIndex + maxFutureSegments && i < stations.length - 1;
+          i++
+        ) {
+          if (isCancelled) break;
+
+          const stationA = stations[i];
+          const stationB = stations[i + 1];
+
+          const latA = parseCoordinate(stationA.position.lat);
+          const lngA = parseCoordinate(stationA.position.lng);
+          const latB = parseCoordinate(stationB.position.lat);
+          const lngB = parseCoordinate(stationB.position.lng);
+
+          if (
+            latA !== null &&
+            lngA !== null &&
+            latB !== null &&
+            lngB !== null
+          ) {
+            console.log(`📍 Calculating: Station ${i + 1} → ${i + 2}`);
+            const route = await getRouteFromOSRM([latA, lngA], [latB, lngB]);
+            if (!isCancelled) {
+              newPaths[`station-${i}-${i + 1}`] = route;
+            }
+          }
+        }
+
+        // 4️⃣ Từ trạm cuối → trường
+        if (
+          stations.length > 0 &&
+          selectedBus.route.currentStatus === "going_to_school" &&
+          !isCancelled
+        ) {
+          const lastStation = stations[stations.length - 1];
+          const lastLat = parseCoordinate(lastStation.position.lat);
+          const lastLng = parseCoordinate(lastStation.position.lng);
+          const schoolLat = parseCoordinate(
+            selectedBus.route.school.position.lat
+          );
+          const schoolLng = parseCoordinate(
+            selectedBus.route.school.position.lng
+          );
+
+          if (
+            lastLat !== null &&
+            lastLng !== null &&
+            schoolLat !== null &&
+            schoolLng !== null
+          ) {
+            console.log("📍 Calculating: Last Station → School");
+            const schoolRoute = await getRouteFromOSRM(
+              [lastLat, lastLng],
+              [schoolLat, schoolLng]
+            );
+            if (!isCancelled) {
+              newPaths["to-school"] = schoolRoute;
+            }
+          }
+        }
+
+        if (!isCancelled) {
+          setRoutePaths(newPaths);
+          console.log(
+            `✅ Routes calculated: ${Object.keys(newPaths).length} segments`
+          );
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error("❌ Error calculating routes:", error);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingRoute(false);
+        }
+      }
+    };
+
+    calculateAllRoutes();
+
+    // Cleanup function
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    selectedBus?.id,
+    selectedBus?.currentStationIndex,
+    selectedBus?.position.lat,
+    selectedBus?.position.lng,
+    selectedBus?.route.currentStatus,
+  ]);
+
+  // ✅ Icon điểm tập trung
+  const createRallyPointIcon = () => {
+    return L.divIcon({
+      html: `
+        <div style="
+          background-color: #9C27B0;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          font-size: 18px;
+          animation: pulse 2s infinite;
+        ">
+          🅿️
+        </div>
+        <style>
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+          }
+        </style>
+      `,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    });
+  };
+
+  // ✅ Icon bus
   const createBusIcon = (bus: Bus) => {
     const color = getBusIconColor(bus);
+    const isWaiting = bus.route.currentStatus === "waiting";
+
     return L.divIcon({
       html: `
       <div style="
@@ -79,971 +379,652 @@ const BusMap: React.FC<MapProps> = ({
         color: white;
         font-weight: bold;
         font-size: 12px;
+        ${isWaiting ? "animation: blink 1.5s infinite;" : ""}
       ">
         🚌
       </div>
+      <style>
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      </style>
     `,
       iconSize: [30, 30],
       iconAnchor: [15, 15],
-      className: "custom-bus-icon", // Thêm class để có thể style thêm nếu cần
+      className: "custom-bus-icon",
+    });
+  };
+
+  // ✅ Icon trường học
+  const createSchoolIcon = () => {
+    return L.divIcon({
+      html: `
+        <div style="
+          background-color: #2196F3;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          font-size: 16px;
+        ">
+          🏫
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+  };
+
+  // ✅ Icon trạm
+  const createStationIcon = (station: Station, isPickedUp: boolean) => {
+    if (isPickedUp) {
+      return L.divIcon({
+        html: `
+          <div style="
+            background-color: #9E9E9E;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+          ">
+            ✓
+          </div>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+    }
+
+    const color =
+      station.type === "pickup"
+        ? "#4CAF50"
+        : station.type === "dropoff"
+        ? "#2196F3"
+        : "#FF9800";
+
+    const icon =
+      station.type === "pickup"
+        ? "🚏"
+        : station.type === "dropoff"
+        ? "🏁"
+        : "🔄";
+
+    return L.divIcon({
+      html: `
+        <div style="
+          background-color: ${color};
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          font-size: 16px;
+          position: relative;
+        ">
+          ${icon}
+          ${
+            station.studentCount > 0
+              ? `<div style="
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                background-color: #DC2626;
+                color: white;
+                border-radius: 50%;
+                width: 18px;
+                height: 18px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                font-weight: bold;
+                border: 2px solid white;
+              ">${station.studentCount}</div>`
+              : ""
+          }
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
     });
   };
 
   return (
-    <MapContainer
-      center={center}
-      zoom={13}
-      style={{ height: "500px", width: "100%" }}
-    >
-      {/* TileLayer từ OpenStreetMap */}
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
+    <div style={{ position: "relative" }}>
+      {/* Loading indicator */}
+      {isLoadingRoute && (
+        <div
+          style={{
+            position: "absolute",
+            top: "10px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1000,
+            backgroundColor: "white",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+          }}
+        >
+          <div
+            className="spinner-border spinner-border-sm text-primary"
+            role="status"
+          />
+          <span style={{ fontSize: "14px", color: "#333" }}>
+            🗺️ Đang tính toán đường đi...
+          </span>
+        </div>
+      )}
 
-      {/* Hiển thị các điểm đón học sinh CHƯA được đón */}
-      {selectedBus?.route.students
-        .filter((student) => !isStudentPickedUp(student.id))
-        .map((student, index) => (
+      <MapContainer
+        center={getMapCenter()}
+        zoom={selectedBus ? 14 : 13}
+        style={{ height: "500px", width: "100%" }}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+
+        {/* ✅ VẼ TẤT CẢ ĐƯỜNG ĐI */}
+        {Object.entries(routePaths).map(([key, positions]) => {
+          let color = "#3B82F6";
+          let weight = 3;
+          let opacity = 0.6;
+          let dashArray = "5, 10";
+
+          if (key === "current") {
+            // Đường đang đi
+            color = "#DC2626";
+            weight = 5;
+            opacity = 0.9;
+            dashArray = "10, 5";
+          } else if (key === "rally-to-first") {
+            // Từ điểm tập trung
+            color = "#9C27B0";
+            weight = 4;
+            opacity = 0.7;
+            dashArray = "10, 5";
+          } else if (key === "to-school") {
+            // Đến trường
+            color = "#10B981";
+            weight = 4;
+            opacity = 0.7;
+            dashArray = "5, 10";
+          }
+
+          return (
+            <Polyline
+              key={`route-${key}`}
+              positions={positions}
+              pathOptions={{
+                color,
+                weight,
+                opacity,
+                dashArray,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+          );
+        })}
+
+        {/* ✅ ĐIỂM TẬP TRUNG */}
+        <Marker
+          position={[RALLY_POINT.position.lat, RALLY_POINT.position.lng]}
+          icon={createRallyPointIcon()}
+        >
+          <Popup>
+            <div style={{ minWidth: "250px" }}>
+              <h6 style={{ margin: "0 0 8px 0", color: "#9C27B0" }}>
+                🅿️ {RALLY_POINT.name}
+              </h6>
+              <p style={{ fontSize: "14px", margin: "4px 0" }}>
+                {RALLY_POINT.description}
+              </p>
+              <div
+                style={{
+                  marginTop: "10px",
+                  padding: "8px",
+                  backgroundColor: "#F3E5F5",
+                  borderRadius: "6px",
+                  border: "2px solid #9C27B0",
+                }}
+              >
+                <strong style={{ color: "#9C27B0", fontSize: "12px" }}>
+                  📍 Tất cả xe xuất phát từ đây
+                </strong>
+              </div>
+            </div>
+          </Popup>
+        </Marker>
+
+        {/* ✅ HIỂN THỊ CÁC TRẠM CỦA XE ĐƯỢC CHỌN */}
+        {selectedBus?.route.stations.map((station, index) => {
+          const isPickedUp = isStationPickedUp(station.id);
+          const isCurrent = selectedBus.currentStationIndex === index;
+
+          const lat = parseCoordinate(station.position.lat);
+          const lng = parseCoordinate(station.position.lng);
+
+          if (lat === null || lng === null) return null;
+
+          return (
+            <Marker
+              key={`station-${selectedBus.id}-${station.id}-${index}`}
+              position={[lat, lng]}
+              eventHandlers={{
+                click: () => handleStationMarkerClick(station.id),
+              }}
+              icon={createStationIcon(station, isPickedUp)}
+            >
+              <Popup>
+                <div style={{ minWidth: "280px" }}>
+                  <h6
+                    style={{
+                      margin: "0 0 8px 0",
+                      color: isPickedUp
+                        ? "#666"
+                        : station.type === "pickup"
+                        ? "#4CAF50"
+                        : station.type === "dropoff"
+                        ? "#2196F3"
+                        : "#FF9800",
+                    }}
+                  >
+                    {isPickedUp ? "✅ Đã qua:" : "🚏 Trạm:"} {station.name}
+                    {isCurrent && !isPickedUp && (
+                      <Badge bg="warning" className="ms-1">
+                        ⭐ Đang đến
+                      </Badge>
+                    )}
+                  </h6>
+
+                  <div style={{ fontSize: "14px", lineHeight: "1.6" }}>
+                    <p style={{ margin: "6px 0" }}>
+                      <strong>📍 Loại trạm:</strong>
+                      <span
+                        style={{
+                          color:
+                            station.type === "pickup"
+                              ? "#4CAF50"
+                              : station.type === "dropoff"
+                              ? "#2196F3"
+                              : "#FF9800",
+                          fontWeight: "bold",
+                          marginLeft: "4px",
+                        }}
+                      >
+                        {station.type === "pickup"
+                          ? "TRẠM ĐÓN"
+                          : station.type === "dropoff"
+                          ? "TRẠM TRẢ"
+                          : "ĐÓN & TRẢ"}
+                      </span>
+                    </p>
+
+                    <p style={{ margin: "6px 0" }}>
+                      <strong>👥 Số học sinh:</strong>{" "}
+                      <span
+                        style={{
+                          color: "#DC2626",
+                          fontWeight: "bold",
+                          fontSize: "16px",
+                        }}
+                      >
+                        {station.studentCount} em
+                      </span>
+                    </p>
+
+                    <p style={{ margin: "6px 0" }}>
+                      <strong>⏰ Giờ dự kiến:</strong>{" "}
+                      {station.estimatedArrival || "Chưa xác định"}
+                    </p>
+
+                    <p style={{ margin: "6px 0" }}>
+                      <strong>🔢 Thứ tự:</strong> {index + 1}/
+                      {selectedBus.route.stations.length}
+                    </p>
+
+                    {station.description && (
+                      <p style={{ margin: "6px 0" }}>
+                        <strong>📝 Mô tả:</strong> {station.description}
+                      </p>
+                    )}
+
+                    <div
+                      style={{
+                        marginTop: "12px",
+                        padding: "10px",
+                        backgroundColor: isPickedUp ? "#E8F5E8" : "#FFF3CD",
+                        borderRadius: "6px",
+                        textAlign: "center",
+                        border: `2px solid ${
+                          isPickedUp ? "#4CAF50" : "#FF9800"
+                        }`,
+                      }}
+                    >
+                      {isPickedUp ? (
+                        <span
+                          style={{
+                            color: "#4CAF50",
+                            fontWeight: "bold",
+                            fontSize: "13px",
+                          }}
+                        >
+                          ✅ XE ĐÃ QUA TRẠM
+                        </span>
+                      ) : isCurrent ? (
+                        <span
+                          style={{
+                            color: "#FF9800",
+                            fontWeight: "bold",
+                            fontSize: "13px",
+                          }}
+                        >
+                          🚌 XE ĐANG ĐẾN TRẠM NÀY
+                        </span>
+                      ) : (
+                        <span style={{ color: "#2196F3", fontSize: "12px" }}>
+                          📍 Click để đánh dấu xe đã đến
+                        </span>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        fontSize: "11px",
+                        color: "#666",
+                        backgroundColor: "#F5F5F5",
+                        padding: "6px",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      <strong>Tọa độ:</strong> {lat.toFixed(6)},{" "}
+                      {lng.toFixed(6)}
+                    </div>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+
+        {/* ✅ TRƯỜNG HỌC */}
+        {selectedBus && (
           <Marker
-            key={`student-${student.id}`}
-            position={[student.position.lat, student.position.lng]}
-            eventHandlers={{
-              click: () => handleStudentMarkerClick(student.id),
-            }}
-            icon={L.icon({
-              iconUrl:
-                "data:image/svg+xml;base64," +
-                btoa(`
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="10" fill="#4CAF50" stroke="white" stroke-width="2"/>
-                  <text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${
-                    index + 1
-                  }</text>
-                </svg>
-              `),
-              iconSize: [24, 24],
-              iconAnchor: [12, 12],
-            })}
+            key={`school-${selectedBus.id}`}
+            position={[
+              selectedBus.route.school.position.lat,
+              selectedBus.route.school.position.lng,
+            ]}
+            icon={createSchoolIcon()}
           >
             <Popup>
-              <div style={{ minWidth: "200px" }}>
-                <h6 style={{ margin: "0 0 8px 0", color: "#4CAF50" }}>
-                  🎒 Điểm đón: {student.name}
+              <div style={{ minWidth: "220px" }}>
+                <h6 style={{ margin: "0 0 8px 0", color: "#2196F3" }}>
+                  🏫 {selectedBus.route.school.name}
                 </h6>
-                <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                  <strong>Lớp:</strong> {student.grade}
-                </p>
-                <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                  <strong>Địa chỉ:</strong> {student.address}
-                </p>
-                <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                  <strong>Giờ đón:</strong> {student.pickupTime}
-                </p>
-                <div
-                  style={{
-                    marginTop: "8px",
-                    padding: "8px",
-                    backgroundColor: "#E8F5E8",
-                    borderRadius: "4px",
-                    textAlign: "center",
-                  }}
-                >
-                  <strong style={{ color: "#4CAF50", fontSize: "12px" }}>
-                    Click để đánh dấu đã đón
-                  </strong>
+                <div style={{ fontSize: "14px", lineHeight: "1.5" }}>
+                  <p style={{ margin: "4px 0" }}>
+                    <strong>⏰ Giờ vào lớp:</strong>{" "}
+                    {selectedBus.route.school.startTime}
+                  </p>
+                  <p style={{ margin: "4px 0" }}>
+                    <strong>📍 Địa chỉ:</strong>{" "}
+                    {"273 An Dương Vương, Quận 5, TP.HCM"}
+                  </p>
+                  {selectedBus.route.currentStatus === "completed" && (
+                    <div
+                      style={{
+                        marginTop: "10px",
+                        padding: "8px",
+                        backgroundColor: "#E8F5E8",
+                        borderRadius: "6px",
+                        textAlign: "center",
+                        border: "2px solid #4CAF50",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "#4CAF50",
+                          fontWeight: "bold",
+                          fontSize: "13px",
+                        }}
+                      >
+                        ✅ XE ĐÃ ĐẾN TRƯỜNG
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </Popup>
           </Marker>
-        ))}
-
-      {/* Hiển thị các điểm đón ĐÃ được đón */}
-      {selectedBus?.route.students
-        .filter((student) => isStudentPickedUp(student.id))
-        .map((student, index) => (
-          <Marker
-            key={`student-pickedup-${student.id}`}
-            position={[student.position.lat, student.position.lng]}
-            icon={L.icon({
-              iconUrl:
-                "data:image/svg+xml;base64," +
-                btoa(`
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="10" cy="10" r="8" fill="#9E9E9E" stroke="white" stroke-width="1"/>
-                  <path d="M6 10L9 13L14 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              `),
-              iconSize: [20, 20],
-              iconAnchor: [10, 10],
-            })}
-          >
-            <Popup>
-              <div style={{ minWidth: "180px" }}>
-                <h6 style={{ margin: "0 0 8px 0", color: "#666" }}>
-                  ✅ Đã đón: {student.name}
-                </h6>
-                <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                  <strong>Lớp:</strong> {student.grade}
-                </p>
-                <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                  <strong>Địa chỉ:</strong> {student.address}
-                </p>
-                <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                  <strong>Giờ đón:</strong> {student.pickupTime}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-
-      {/* Hiển thị trường học */}
-      {selectedBus && (
-        <Marker
-          position={[
-            selectedBus.route.school.position.lat,
-            selectedBus.route.school.position.lng,
-          ]}
-          icon={L.icon({
-            iconUrl:
-              svgToDataUrl(`<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-	 viewBox="0 0 508 508" xml:space="preserve">
-<circle style="fill:#90DFAA;" cx="254" cy="254" r="254"/>
-<polygon style="fill:#F1543F;" points="445.6,221.6 62.4,221.6 81.2,150.4 426.8,150.4 "/>
-<path style="fill:#2C9984;" d="M53.2,409.2C99.6,469.2,172.4,508,254,508s154.4-38.8,200.8-98.8H53.2z"/>
-<rect x="81.2" y="221.6" style="fill:#E6E9EE;" width="345.6" height="187.6"/>
-<path style="fill:#FFFFFF;" d="M330,180.8c-20.8-20.8-43.6-40-65.6-59.6c-1.6-1.2-2.4-2.8-3.2-4h-18.4c-1.2,3.2-3.2,5.6-6.8,7.2
-	c-6.8,2.8-9.6,10.8-12.8,16.4c-3.6,6.4-8,12.4-13.6,17.2c-9.6,9.2-21.6,15.2-32,23.2v228h153.2v-228
-	C330.8,181.2,330.4,180.8,330,180.8z"/>
-<rect x="81.2" y="390.8" style="fill:#2B3B4E;" width="345.6" height="18.4"/>
-<rect x="177.6" y="390.8" style="fill:#324A5E;" width="153.2" height="18.4"/>
-<polygon style="fill:#FF7058;" points="177.6,200.8 254,124.4 330.4,200.8 355.2,200.8 254,99.6 152.8,200.8 "/>
-<g>
-	<rect x="195.2" y="216.8" style="fill:#84DBFF;" width="33.2" height="33.2"/>
-	<rect x="237.6" y="216.8" style="fill:#84DBFF;" width="33.2" height="33.2"/>
-	<rect x="279.6" y="216.8" style="fill:#84DBFF;" width="33.2" height="33.2"/>
-</g>
-<rect x="222.8" y="318" style="fill:#FFD05B;" width="55.6" height="72.8"/>
-<g>
-	<rect x="341.2" y="249.2" style="fill:#84DBFF;" width="30.4" height="30.4"/>
-	<rect x="380" y="249.2" style="fill:#84DBFF;" width="30.4" height="30.4"/>
-	<rect x="341.2" y="287.6" style="fill:#84DBFF;" width="30.4" height="30.4"/>
-	<rect x="380" y="287.6" style="fill:#84DBFF;" width="30.4" height="30.4"/>
-	<rect x="97.6" y="249.2" style="fill:#84DBFF;" width="30.4" height="30.4"/>
-	<rect x="136.4" y="249.2" style="fill:#84DBFF;" width="30.4" height="30.4"/>
-	<rect x="97.6" y="287.6" style="fill:#84DBFF;" width="30.4" height="30.4"/>
-	<rect x="136.4" y="287.6" style="fill:#84DBFF;" width="30.4" height="30.4"/>
-</g>
-<circle style="fill:#324A5E;" cx="254" cy="178.4" r="22.8"/>
-<circle style="fill:#E6E9EE;" cx="254" cy="178.4" r="17.6"/>
-<g>
-	<rect x="253.6" y="162.8" style="fill:#ACB3BA;" width="1.2" height="2"/>
-	<rect x="253.6" y="192.4" style="fill:#ACB3BA;" width="1.2" height="2"/>
-	<rect x="267.6" y="178" style="fill:#ACB3BA;" width="2" height="1.2"/>
-	<rect x="238.4" y="178" style="fill:#ACB3BA;" width="2" height="1.2"/>
-
-		<rect x="263.904" y="167.301" transform="matrix(-0.7071 -0.7071 0.7071 -0.7071 332.5304 474.3411)" style="fill:#ACB3BA;" width="1.2" height="2"/>
-
-		<rect x="243.124" y="188.134" transform="matrix(-0.7073 -0.7069 0.7069 -0.7073 282.412 495.2007)" style="fill:#ACB3BA;" width="1.2" height="2"/>
-
-		<rect x="263.696" y="188.069" transform="matrix(0.7073 -0.7069 0.7069 0.7073 -56.2967 242.1719)" style="fill:#ACB3BA;" width="1.2" height="2"/>
-
-		<rect x="242.791" y="167.254" transform="matrix(0.7073 -0.7069 0.7069 0.7073 -47.7006 221.3016)" style="fill:#ACB3BA;" width="1.2" height="2"/>
-</g>
-</svg>`),
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
-          })}
-        >
-          <Popup>
-            <div style={{ minWidth: "200px" }}>
-              <h6 style={{ margin: "0 0 8px 0", color: "#2196F3" }}>
-                🏫 {selectedBus.route.school.name}
-              </h6>
-              <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                <strong>Giờ vào lớp:</strong>{" "}
-                {selectedBus.route.school.startTime}
-              </p>
-              <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                <strong>Địa chỉ:</strong>{" "}
-                {selectedBus.route.school.address ||
-                  "273 An Dương Vương, Quận 5, TP.HCM"}
-              </p>
-            </div>
-          </Popup>
-        </Marker>
-      )}
-
-      {/* Hiển thị các xe bus với icon động */}
-      {buses.map((bus) => (
-        <Marker
-          key={bus.id}
-          position={[bus.position.lat, bus.position.lng]}
-          eventHandlers={{
-            click: () => onBusSelect?.(bus),
-          }}
-          icon={createBusIcon(bus)}
-        >
-          <Popup>
-            <div style={{ minWidth: "250px" }}>
-              <h6 style={{ margin: "0 0 8px 0", color: getBusIconColor(bus) }}>
-                {bus.name}
-              </h6>
-              <div style={{ fontSize: "14px", lineHeight: "1.4" }}>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Biển số:</strong> {bus.licensePlate}
-                </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Tài xế:</strong> {bus.route.driver}
-                </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Tốc độ:</strong> {bus.speed || 0} km/h
-                </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Trạng thái:</strong>
-                  <span
-                    style={{
-                      color: getBusIconColor(bus),
-                      fontWeight: "bold",
-                      marginLeft: "4px",
-                    }}
-                  >
-                    {bus.route.currentStatus === "completed" && "✅ Hoàn thành"}
-                    {bus.route.currentStatus === "going_to_school" &&
-                      "🏫 Đang đến trường"}
-                    {bus.route.currentStatus === "picking_up" &&
-                      "🎒 Đang đón học sinh"}
-                    {bus.route.currentStatus === "waiting" && "⏳ Chờ bắt đầu"}
-                  </span>
-                </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Đã đón:</strong> {bus.pickedUpStudents?.length || 0}/
-                  {bus.route.students.length} học sinh
-                </p>
-                {bus.nextStop && (
-                  <div
-                    style={{
-                      marginTop: "8px",
-                      padding: "8px",
-                      backgroundColor: "#FFF3CD",
-                      borderRadius: "4px",
-                      border: "1px solid #FFEaa7",
-                    }}
-                  >
-                    <strong style={{ color: "#856404", fontSize: "12px" }}>
-                      🎯 Điểm tiếp theo: {bus.nextStop.student.name}
-                    </strong>
-                    <br />
-                    <span style={{ color: "#856404", fontSize: "11px" }}>
-                      Dự kiến: {bus.nextStop.estimatedArrival}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
-
-      {/* Vẽ lộ trình - chỉ hiển thị các điểm CHƯA đón và trường học */}
-      {selectedBus && (
-        <Polyline
-          positions={[
-            [
-              selectedBus.position.lat,
-              selectedBus.position.lng,
-            ] as L.LatLngExpression,
-            ...selectedBus.route.students
-              .filter((student) => !isStudentPickedUp(student.id))
-              .map(
-                (s) => [s.position.lat, s.position.lng] as L.LatLngExpression
-              ),
-            [
-              selectedBus.route.school.position.lat,
-              selectedBus.route.school.position.lng,
-            ] as L.LatLngExpression,
-          ]}
-          color="blue"
-          weight={4}
-          opacity={0.7}
-        />
-      )}
-
-      {/* Vẽ đường từ xe đến điểm tiếp theo (nếu có) */}
-      {selectedBus &&
-        selectedBus.route.currentStudentIndex <
-          selectedBus.route.students.length && (
-          <Polyline
-            positions={[
-              [
-                selectedBus.position.lat,
-                selectedBus.position.lng,
-              ] as L.LatLngExpression,
-              [
-                selectedBus.route.students[
-                  selectedBus.route.currentStudentIndex
-                ].position.lat,
-                selectedBus.route.students[
-                  selectedBus.route.currentStudentIndex
-                ].position.lng,
-              ] as L.LatLngExpression,
-            ]}
-            color="red"
-            weight={3}
-            opacity={0.9}
-            dashArray="5, 10"
-          />
         )}
-    </MapContainer>
+
+        {/* ✅ CÁC XE BUÝT */}
+        {buses.map((bus) => {
+          const lat = parseCoordinate(bus.position.lat);
+          const lng = parseCoordinate(bus.position.lng);
+
+          if (lat === null || lng === null) return null;
+
+          return (
+            <Marker
+              key={bus.id}
+              position={[lat, lng]}
+              eventHandlers={{
+                click: () => onBusSelect?.(bus),
+              }}
+              icon={createBusIcon(bus)}
+            >
+              <Popup>
+                <div style={{ minWidth: "300px" }}>
+                  <h6
+                    style={{ margin: "0 0 8px 0", color: getBusIconColor(bus) }}
+                  >
+                    🚌 {bus.name}
+                  </h6>
+                  <div style={{ fontSize: "14px", lineHeight: "1.5" }}>
+                    <p style={{ margin: "4px 0" }}>
+                      <strong>🚗 Biển số:</strong> {bus.licensePlate}
+                    </p>
+                    <p style={{ margin: "4px 0" }}>
+                      <strong>👨‍✈️ Tài xế:</strong> {bus.route.driver}
+                    </p>
+                    <p style={{ margin: "4px 0" }}>
+                      <strong>⚡ Tốc độ:</strong> {bus.speed || 0} km/h
+                    </p>
+                    <p style={{ margin: "4px 0" }}>
+                      <strong>📊 Trạng thái:</strong>
+                      <span
+                        style={{
+                          color: getBusIconColor(bus),
+                          fontWeight: "bold",
+                          marginLeft: "4px",
+                        }}
+                      >
+                        {bus.route.currentStatus === "completed" &&
+                          "✅ Hoàn thành"}
+                        {bus.route.currentStatus === "going_to_school" &&
+                          "🏫 Đang đến trường"}
+                        {bus.route.currentStatus === "picking_up" &&
+                          "🚏 Đang đi giữa các trạm"}
+                        {bus.route.currentStatus === "waiting" &&
+                          "⏳ Đang tập trung"}
+                      </span>
+                    </p>
+                    <p style={{ margin: "4px 0" }}>
+                      <strong>📍 Tiến trình:</strong>{" "}
+                      <span style={{ fontWeight: "bold", color: "#2196F3" }}>
+                        {bus.pickedUpStations?.length || 0}/
+                        {bus.route.stations.length} trạm
+                      </span>
+                    </p>
+
+                    {bus.nextStop && (
+                      <div
+                        style={{
+                          marginTop: "10px",
+                          padding: "10px",
+                          backgroundColor: "#FFF3CD",
+                          borderRadius: "6px",
+                          border: "2px solid #FFE082",
+                        }}
+                      >
+                        <strong
+                          style={{
+                            color: "#856404",
+                            fontSize: "13px",
+                            display: "block",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          🎯 Trạm tiếp theo:
+                        </strong>
+                        <div style={{ color: "#856404", fontSize: "12px" }}>
+                          <strong>{bus.nextStop.station.name}</strong>
+                          <br />
+                          <span>
+                            ⏰ Dự kiến: {bus.nextStop.estimatedArrival}
+                          </span>
+                          <br />
+                          <span>
+                            👥 Số học sinh: {bus.nextStop.station.studentCount}{" "}
+                            em
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ marginTop: "12px", textAlign: "center" }}>
+                      <button
+                        onClick={() => onBusSelect?.(bus)}
+                        style={{
+                          backgroundColor: "#007bff",
+                          color: "white",
+                          border: "none",
+                          padding: "8px 16px",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                          cursor: "pointer",
+                          width: "100%",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        📍 Theo dõi xe này
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+
+        {/* Legend */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "20px",
+            right: "10px",
+            zIndex: 1000,
+            backgroundColor: "white",
+            padding: "12px",
+            borderRadius: "8px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+            fontSize: "12px",
+            border: "2px solid #E0E0E0",
+          }}
+        >
+          <div
+            style={{
+              fontWeight: "bold",
+              marginBottom: "8px",
+              fontSize: "13px",
+              color: "#333",
+            }}
+          >
+            📍 Chú thích:
+          </div>
+          <div style={{ marginBottom: "5px" }}>
+            <span
+              style={{
+                display: "inline-block",
+                width: "14px",
+                height: "14px",
+                backgroundColor: "#9C27B0",
+                borderRadius: "50%",
+                marginRight: "8px",
+                border: "2px solid white",
+              }}
+            ></span>
+            <span>Điểm tập trung</span>
+          </div>
+          <div style={{ marginBottom: "5px" }}>
+            <span
+              style={{
+                display: "inline-block",
+                width: "14px",
+                height: "14px",
+                backgroundColor: "#4CAF50",
+                borderRadius: "50%",
+                marginRight: "8px",
+                border: "2px solid white",
+              }}
+            ></span>
+            <span>Trạm đón</span>
+          </div>
+          <div style={{ marginBottom: "5px" }}>
+            <span
+              style={{
+                display: "inline-block",
+                width: "14px",
+                height: "14px",
+                backgroundColor: "#9E9E9E",
+                borderRadius: "50%",
+                marginRight: "8px",
+                border: "2px solid white",
+              }}
+            ></span>
+            <span>Đã qua trạm</span>
+          </div>
+          <hr style={{ margin: "8px 0", borderColor: "#E0E0E0" }} />
+          <div style={{ fontSize: "11px", color: "#666" }}>
+            <strong style={{ color: "#DC2626" }}>━━</strong> Đang đi
+            <br />
+            <strong style={{ color: "#9C27B0" }}>┄┄</strong> Từ điểm tập trung
+            <br />
+            <strong style={{ color: "#3B82F6" }}>┄┄</strong> Chưa đến
+            <br />
+            <strong style={{ color: "#10B981" }}>┄┄</strong> Đến trường
+          </div>
+        </div>
+      </MapContainer>
+    </div>
   );
 };
 
 export default BusMap;
-
-// "use client";
-// import {
-//   MapContainer,
-//   TileLayer,
-//   Marker,
-//   Popup,
-//   Polyline,
-// } from "react-leaflet";
-// import "leaflet/dist/leaflet.css";
-// import { Bus } from "../types/bus";
-// import L from "leaflet";
-// import { useState, useEffect, useRef } from "react";
-
-// // Fix marker icons trong React
-// delete (L.Icon.Default.prototype as any)._getIconUrl;
-// L.Icon.Default.mergeOptions({
-//   iconRetinaUrl:
-//     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-//   iconUrl:
-//     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-//   shadowUrl:
-//     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-// });
-
-// interface MapProps {
-//   buses?: Bus[];
-//   selectedBus?: Bus | null;
-//   onBusSelect?: (bus: Bus | null) => void;
-//   onStudentPickup?: (studentId: string) => void;
-// }
-
-// interface RouteSegment {
-//   positions: [number, number][];
-//   color: string;
-//   weight: number;
-//   opacity: number;
-//   dashArray?: string;
-// }
-
-// // Hàm encode SVG an toàn cho btoa
-// const encodeSvg = (svgString: string): string => {
-//   const safeSvgString = svgString
-//     .replace(/[\u{1F300}-\u{1F9FF}]/gu, (char) => {
-//       const code = char.codePointAt(0)?.toString(16);
-//       return code ? `&#x${code};` : char;
-//     })
-//     .replace(/#/g, "%23")
-//     .replace(/\n/g, " ")
-//     .replace(/\s+/g, " ");
-
-//   try {
-//     return btoa(unescape(encodeURIComponent(safeSvgString)));
-//   } catch (error) {
-//     console.error("Error encoding SVG:", error);
-//     return "";
-//   }
-// };
-
-// // SVG strings được định nghĩa trước
-// const STUDENT_SVG = (index: number) => `
-// <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-//   <circle cx="12" cy="12" r="10" fill="#4CAF50" stroke="white" stroke-width="2"/>
-//   <text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${
-//     index + 1
-//   }</text>
-// </svg>`;
-
-// const PICKED_UP_SVG = `
-// <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-//   <circle cx="10" cy="10" r="8" fill="#9E9E9E" stroke="white" stroke-width="1"/>
-//   <path d="M6 10L9 13L14 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-// </svg>`;
-
-// const SCHOOL_SVG = `
-// <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-//   <circle cx="15" cy="15" r="14" fill="#2196F3" stroke="white" stroke-width="2"/>
-//   <text x="15" y="19" text-anchor="middle" fill="white" font-size="12" font-weight="bold">SCH</text>
-// </svg>`;
-
-// // Hàm tạo đường đi mượt mà hơn (smooth path) thay vì đường thẳng
-// const createSmoothPath = (points: [number, number][]): [number, number][] => {
-//   if (points.length < 2) return points;
-
-//   const smoothPoints: [number, number][] = [];
-
-//   for (let i = 0; i < points.length - 1; i++) {
-//     const [startLat, startLng] = points[i];
-//     const [endLat, endLng] = points[i + 1];
-
-//     // Thêm điểm bắt đầu
-//     smoothPoints.push([startLat, startLng]);
-
-//     // Tạo các điểm trung gian để đường cong mượt hơn
-//     const steps = 3;
-//     for (let j = 1; j < steps; j++) {
-//       const t = j / steps;
-//       // Sử dụng curve easing để tạo đường cong tự nhiên
-//       const easedT = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-
-//       const midLat = startLat + (endLat - startLat) * easedT;
-//       const midLng = startLng + (endLng - startLng) * easedT;
-
-//       // Thêm một chút ngẫu nhiên nhỏ để đường không quá thẳng
-//       const randomOffset = 0.00001;
-//       const finalLat = midLat + (Math.random() - 0.5) * randomOffset;
-//       const finalLng = midLng + (Math.random() - 0.5) * randomOffset;
-
-//       smoothPoints.push([finalLat, finalLng]);
-//     }
-//   }
-
-//   // Thêm điểm cuối
-//   smoothPoints.push(points[points.length - 1]);
-
-//   return smoothPoints;
-// };
-
-// const BusMap: React.FC<MapProps> = ({
-//   buses = [],
-//   selectedBus = null,
-//   onBusSelect,
-//   onStudentPickup,
-// }) => {
-//   const center: [number, number] = [10.762622, 106.660172];
-//   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
-//   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
-//   const [useRealRoutes, setUseRealRoutes] = useState(true);
-//   const routesCache = useRef<Map<string, RouteSegment[]>>(new Map());
-
-//   // Hàm kiểm tra xem học sinh đã được đón chưa
-//   const isStudentPickedUp = (studentId: string): boolean => {
-//     if (!selectedBus) return false;
-//     return selectedBus.pickedUpStudents?.includes(studentId) || false;
-//   };
-
-//   // Hàm xử lý khi click vào marker học sinh
-//   const handleStudentMarkerClick = (studentId: string) => {
-//     if (onStudentPickup && !isStudentPickedUp(studentId)) {
-//       onStudentPickup(studentId);
-//     }
-//   };
-
-//   // Hàm lấy màu sắc cho bus dựa trên trạng thái
-//   const getBusIconColor = (bus: Bus) => {
-//     if (bus.route.currentStatus === "completed") return "#4CAF50";
-//     if (bus.route.currentStatus === "going_to_school") return "#2196F3";
-//     if (bus.route.currentStatus === "picking_up") return "#FF9800";
-//     return "#DC2626";
-//   };
-
-//   // Hàm lấy đường đi từ OSRM API với timeout và retry
-//   const getRouteFromOSRM = async (
-//     waypoints: [number, number][]
-//   ): Promise<[number, number][]> => {
-//     if (waypoints.length < 2) return [];
-
-//     try {
-//       const coordinates = waypoints
-//         .map((coord) => `${coord[1]},${coord[0]}`)
-//         .join(";");
-//       const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
-
-//       // Thêm timeout để tránh treo
-//       const controller = new AbortController();
-//       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 seconds timeout
-
-//       const response = await fetch(url, {
-//         signal: controller.signal,
-//       });
-
-//       clearTimeout(timeoutId);
-
-//       if (!response.ok) {
-//         throw new Error(`HTTP error! status: ${response.status}`);
-//       }
-
-//       const data = await response.json();
-
-//       if (data.code === "Ok" && data.routes.length > 0) {
-//         const geometry = data.routes[0].geometry;
-//         if (geometry.type === "LineString") {
-//           return geometry.coordinates.map((coord: [number, number]) => [
-//             coord[1],
-//             coord[0],
-//           ]);
-//         }
-//       }
-
-//       throw new Error("No valid route found");
-//     } catch (error) {
-//       console.warn("OSRM API failed, using fallback routes:", error);
-//       // Return empty array để dùng fallback
-//       return [];
-//     }
-//   };
-
-//   // Hàm tính toán tuyến đường - cải tiến với fallback mượt mà
-//   const calculateRealRoutes = async (bus: Bus) => {
-//     const cacheKey = `${bus.id}-${
-//       bus.route.currentStudentIndex
-//     }-${bus.pickedUpStudents?.join(",")}`;
-
-//     if (routesCache.current.has(cacheKey)) {
-//       setRouteSegments(routesCache.current.get(cacheKey) || []);
-//       return;
-//     }
-
-//     setIsLoadingRoutes(true);
-
-//     try {
-//       let segments: RouteSegment[] = [];
-//       const students = bus.route.students;
-//       const currentIndex = bus.route.currentStudentIndex;
-
-//       // Thử dùng OSRM API nếu được bật
-//       if (useRealRoutes) {
-//         try {
-//           // 1. Đường từ xe đến điểm đón tiếp theo
-//           if (currentIndex < students.length) {
-//             const nextStudent = students[currentIndex];
-//             const busToNextStop = await getRouteFromOSRM([
-//               [bus.position.lat, bus.position.lng],
-//               [nextStudent.position.lat, nextStudent.position.lng],
-//             ]);
-
-//             if (busToNextStop.length > 0) {
-//               segments.push({
-//                 positions: busToNextStop,
-//                 color: "#DC2626",
-//                 weight: 4,
-//                 opacity: 0.9,
-//                 dashArray: "5, 10",
-//               });
-//             }
-//           }
-
-//           // 2. Đường giữa các điểm đón
-//           const waitingStudents = students
-//             .filter(
-//               (student, index) =>
-//                 index >= currentIndex && !isStudentPickedUp(student.id)
-//             )
-//             .map(
-//               (student) =>
-//                 [student.position.lat, student.position.lng] as [number, number]
-//             );
-
-//           if (waitingStudents.length >= 2) {
-//             const betweenStopsRoute = await getRouteFromOSRM(waitingStudents);
-//             if (betweenStopsRoute.length > 0) {
-//               segments.push({
-//                 positions: betweenStopsRoute,
-//                 color: "#2196F3",
-//                 weight: 4,
-//                 opacity: 0.7,
-//               });
-//             }
-//           }
-
-//           // 3. Đường đến trường
-//           if (
-//             currentIndex >= students.length ||
-//             bus.route.currentStatus === "going_to_school"
-//           ) {
-//             const lastStudent = students[students.length - 1];
-//             const lastStopToSchool = await getRouteFromOSRM([
-//               [lastStudent.position.lat, lastStudent.position.lng],
-//               [bus.route.school.position.lat, bus.route.school.position.lng],
-//             ]);
-
-//             if (lastStopToSchool.length > 0) {
-//               segments.push({
-//                 positions: lastStopToSchool,
-//                 color: "#10B981",
-//                 weight: 4,
-//                 opacity: 0.7,
-//               });
-//             }
-//           }
-//         } catch (error) {
-//           console.warn("Real routing failed, switching to smooth paths");
-//           setUseRealRoutes(false);
-//         }
-//       }
-
-//       // Nếu không có segments từ OSRM hoặc OSRM failed, dùng smooth paths
-//       if (segments.length === 0) {
-//         segments = getSmoothRoutes(bus);
-//       }
-
-//       routesCache.current.set(cacheKey, segments);
-//       setRouteSegments(segments);
-//     } catch (error) {
-//       console.error("Error calculating routes:", error);
-//       setRouteSegments(getSmoothRoutes(bus));
-//     } finally {
-//       setIsLoadingRoutes(false);
-//     }
-//   };
-
-//   // Fallback routes với đường cong mượt mà
-//   const getSmoothRoutes = (bus: Bus): RouteSegment[] => {
-//     const segments: RouteSegment[] = [];
-//     const students = bus.route.students;
-//     const currentIndex = bus.route.currentStudentIndex;
-
-//     // Đường từ xe đến điểm tiếp theo (màu đỏ, nét đứt)
-//     if (currentIndex < students.length) {
-//       const nextStudent = students[currentIndex];
-//       const busToNextStop = createSmoothPath([
-//         [bus.position.lat, bus.position.lng],
-//         [nextStudent.position.lat, nextStudent.position.lng],
-//       ]);
-
-//       segments.push({
-//         positions: busToNextStop,
-//         color: "#DC2626",
-//         weight: 4,
-//         opacity: 0.9,
-//         dashArray: "5, 10",
-//       });
-//     }
-
-//     // Đường giữa các điểm đón (màu xanh dương)
-//     const waitingStudents = students
-//       .filter((_, index) => index >= currentIndex)
-//       .map(
-//         (student) =>
-//           [student.position.lat, student.position.lng] as [number, number]
-//       );
-
-//     if (waitingStudents.length > 0) {
-//       const allStopsPath = createSmoothPath([
-//         ...waitingStudents,
-//         [bus.route.school.position.lat, bus.route.school.position.lng],
-//       ]);
-
-//       segments.push({
-//         positions: allStopsPath,
-//         color: "#2196F3",
-//         weight: 4,
-//         opacity: 0.7,
-//       });
-//     }
-
-//     // Đường đến trường nếu đang trên đường (màu xanh lá)
-//     if (
-//       bus.route.currentStatus === "going_to_school" &&
-//       currentIndex >= students.length
-//     ) {
-//       const busToSchool = createSmoothPath([
-//         [bus.position.lat, bus.position.lng],
-//         [bus.route.school.position.lat, bus.route.school.position.lng],
-//       ]);
-
-//       segments.push({
-//         positions: busToSchool,
-//         color: "#10B981",
-//         weight: 4,
-//         opacity: 0.9,
-//         dashArray: "5, 10",
-//       });
-//     }
-
-//     return segments;
-//   };
-
-//   // Tính toán lại routes khi selectedBus thay đổi
-//   useEffect(() => {
-//     if (selectedBus) {
-//       calculateRealRoutes(selectedBus);
-//     } else {
-//       setRouteSegments([]);
-//     }
-//   }, [selectedBus]);
-
-//   // Tạo icon bus động
-//   const createBusIcon = (bus: Bus) => {
-//     const color = getBusIconColor(bus);
-//     return L.divIcon({
-//       html: `
-//       <div style="
-//         background-color: ${color};
-//         width: 30px;
-//         height: 30px;
-//         border-radius: 50%;
-//         border: 3px solid white;
-//         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-//         display: flex;
-//         align-items: center;
-//         justify-content: center;
-//         color: white;
-//         font-weight: bold;
-//         font-size: 12px;
-//       ">
-//         🚌
-//       </div>
-//     `,
-//       iconSize: [30, 30],
-//       iconAnchor: [15, 15],
-//       className: "custom-bus-icon",
-//     });
-//   };
-
-//   // Tạo icon cho học sinh
-//   const createStudentIcon = (index: number, isPickedUp: boolean) => {
-//     if (isPickedUp) {
-//       return L.icon({
-//         iconUrl: `data:image/svg+xml;base64,${encodeSvg(PICKED_UP_SVG)}`,
-//         iconSize: [20, 20],
-//         iconAnchor: [10, 10],
-//       });
-//     }
-
-//     return L.icon({
-//       iconUrl: `data:image/svg+xml;base64,${encodeSvg(STUDENT_SVG(index))}`,
-//       iconSize: [24, 24],
-//       iconAnchor: [12, 12],
-//     });
-//   };
-
-//   // Tạo icon cho trường học
-//   const createSchoolIcon = () => {
-//     return L.icon({
-//       iconUrl: `data:image/svg+xml;base64,${encodeSvg(SCHOOL_SVG)}`,
-//       iconSize: [30, 30],
-//       iconAnchor: [15, 15],
-//     });
-//   };
-
-//   return (
-//     <div className="relative">
-//       {isLoadingRoutes && (
-//         <div className="absolute top-2 left-2 z-[1000] bg-blue-500 text-white px-3 py-1 rounded-md text-sm">
-//           🗺️ Đang tải tuyến đường...
-//         </div>
-//       )}
-
-//       {!useRealRoutes && (
-//         <div className="absolute top-2 right-2 z-[1000] bg-yellow-500 text-white px-3 py-1 rounded-md text-sm">
-//           ⚠️ Đang dùng đường mượt mà (OSRM không khả dụng)
-//         </div>
-//       )}
-
-//       <MapContainer
-//         center={center}
-//         zoom={13}
-//         style={{ height: "500px", width: "100%" }}
-//         className="rounded-lg"
-//       >
-//         <TileLayer
-//           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-//           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-//         />
-
-//         {/* Hiển thị các tuyến đường */}
-//         {routeSegments.map((segment, index) => (
-//           <Polyline
-//             key={`route-${index}`}
-//             positions={segment.positions}
-//             color={segment.color}
-//             weight={segment.weight}
-//             opacity={segment.opacity}
-//             dashArray={segment.dashArray}
-//           />
-//         ))}
-
-//         {/* Hiển thị các điểm đón học sinh CHƯA được đón */}
-//         {selectedBus?.route.students
-//           .filter((student) => !isStudentPickedUp(student.id))
-//           .map((student, index) => (
-//             <Marker
-//               key={`student-${student.id}`}
-//               position={[student.position.lat, student.position.lng]}
-//               eventHandlers={{
-//                 click: () => handleStudentMarkerClick(student.id),
-//               }}
-//               icon={createStudentIcon(index, false)}
-//             >
-//               <Popup>
-//                 <div style={{ minWidth: "200px" }}>
-//                   <h6 style={{ margin: "0 0 8px 0", color: "#4CAF50" }}>
-//                     🎒 Điểm đón: {student.name}
-//                   </h6>
-//                   <p style={{ margin: "4px 0", fontSize: "14px" }}>
-//                     <strong>Lớp:</strong> {student.grade}
-//                   </p>
-//                   <p style={{ margin: "4px 0", fontSize: "14px" }}>
-//                     <strong>Địa chỉ:</strong> {student.address}
-//                   </p>
-//                   <p style={{ margin: "4px 0", fontSize: "14px" }}>
-//                     <strong>Giờ đón:</strong> {student.pickupTime}
-//                   </p>
-//                   <div
-//                     style={{
-//                       marginTop: "8px",
-//                       padding: "8px",
-//                       backgroundColor: "#E8F5E8",
-//                       borderRadius: "4px",
-//                       textAlign: "center",
-//                     }}
-//                   >
-//                     <strong style={{ color: "#4CAF50", fontSize: "12px" }}>
-//                       Click để đánh dấu đã đón
-//                     </strong>
-//                   </div>
-//                 </div>
-//               </Popup>
-//             </Marker>
-//           ))}
-
-//         {/* Hiển thị các điểm đón ĐÃ được đón */}
-//         {selectedBus?.route.students
-//           .filter((student) => isStudentPickedUp(student.id))
-//           .map((student, index) => (
-//             <Marker
-//               key={`student-pickedup-${student.id}`}
-//               position={[student.position.lat, student.position.lng]}
-//               icon={createStudentIcon(index, true)}
-//             >
-//               <Popup>
-//                 <div style={{ minWidth: "180px" }}>
-//                   <h6 style={{ margin: "0 0 8px 0", color: "#666" }}>
-//                     ✅ Đã đón: {student.name}
-//                   </h6>
-//                   <p style={{ margin: "4px 0", fontSize: "14px" }}>
-//                     <strong>Lớp:</strong> {student.grade}
-//                   </p>
-//                   <p style={{ margin: "4px 0", fontSize: "14px" }}>
-//                     <strong>Địa chỉ:</strong> {student.address}
-//                   </p>
-//                   <p style={{ margin: "4px 0", fontSize: "14px" }}>
-//                     <strong>Giờ đón:</strong> {student.pickupTime}
-//                   </p>
-//                 </div>
-//               </Popup>
-//             </Marker>
-//           ))}
-
-//         {/* Hiển thị trường học */}
-//         {selectedBus && (
-//           <Marker
-//             position={[
-//               selectedBus.route.school.position.lat,
-//               selectedBus.route.school.position.lng,
-//             ]}
-//             icon={createSchoolIcon()}
-//           >
-//             <Popup>
-//               <div style={{ minWidth: "200px" }}>
-//                 <h6 style={{ margin: "0 0 8px 0", color: "#2196F3" }}>
-//                   🏫 {selectedBus.route.school.name}
-//                 </h6>
-//                 <p style={{ margin: "4px 0", fontSize: "14px" }}>
-//                   <strong>Giờ vào lớp:</strong>{" "}
-//                   {selectedBus.route.school.startTime}
-//                 </p>
-//                 <p style={{ margin: "4px 0", fontSize: "14px" }}>
-//                   <strong>Địa chỉ:</strong>{" "}
-//                   {selectedBus.route.school.address ||
-//                     "273 An Dương Vương, Quận 5, TP.HCM"}
-//                 </p>
-//               </div>
-//             </Popup>
-//           </Marker>
-//         )}
-
-//         {/* Hiển thị các xe bus */}
-//         {buses.map((bus) => (
-//           <Marker
-//             key={bus.id}
-//             position={[bus.position.lat, bus.position.lng]}
-//             eventHandlers={{
-//               click: () => onBusSelect?.(bus),
-//             }}
-//             icon={createBusIcon(bus)}
-//           >
-//             <Popup>
-//               <div style={{ minWidth: "250px" }}>
-//                 <h6
-//                   style={{ margin: "0 0 8px 0", color: getBusIconColor(bus) }}
-//                 >
-//                   {bus.name}
-//                 </h6>
-//                 <div style={{ fontSize: "14px", lineHeight: "1.4" }}>
-//                   <p style={{ margin: "4px 0" }}>
-//                     <strong>Biển số:</strong> {bus.licensePlate}
-//                   </p>
-//                   <p style={{ margin: "4px 0" }}>
-//                     <strong>Tài xế:</strong> {bus.route.driver}
-//                   </p>
-//                   <p style={{ margin: "4px 0" }}>
-//                     <strong>Tốc độ:</strong> {bus.speed || 0} km/h
-//                   </p>
-//                   <p style={{ margin: "4px 0" }}>
-//                     <strong>Trạng thái:</strong>
-//                     <span
-//                       style={{
-//                         color: getBusIconColor(bus),
-//                         fontWeight: "bold",
-//                         marginLeft: "4px",
-//                       }}
-//                     >
-//                       {bus.route.currentStatus === "completed" &&
-//                         "✅ Hoàn thành"}
-//                       {bus.route.currentStatus === "going_to_school" &&
-//                         "🏫 Đang đến trường"}
-//                       {bus.route.currentStatus === "picking_up" &&
-//                         "🎒 Đang đón học sinh"}
-//                       {bus.route.currentStatus === "waiting" &&
-//                         "⏳ Chờ bắt đầu"}
-//                     </span>
-//                   </p>
-//                   <p style={{ margin: "4px 0" }}>
-//                     <strong>Đã đón:</strong> {bus.pickedUpStudents?.length || 0}
-//                     /{bus.route.students.length} học sinh
-//                   </p>
-//                   {bus.nextStop && (
-//                     <div
-//                       style={{
-//                         marginTop: "8px",
-//                         padding: "8px",
-//                         backgroundColor: "#FFF3CD",
-//                         borderRadius: "4px",
-//                         border: "1px solid #FFEaa7",
-//                       }}
-//                     >
-//                       <strong style={{ color: "#856404", fontSize: "12px" }}>
-//                         🎯 Điểm tiếp theo: {bus.nextStop.student.name}
-//                       </strong>
-//                       <br />
-//                       <span style={{ color: "#856404", fontSize: "11px" }}>
-//                         Dự kiến: {bus.nextStop.estimatedArrival}
-//                       </span>
-//                     </div>
-//                   )}
-//                 </div>
-//               </div>
-//             </Popup>
-//           </Marker>
-//         ))}
-//       </MapContainer>
-//     </div>
-//   );
-// };
-
-// export default BusMap;

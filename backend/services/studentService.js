@@ -520,12 +520,199 @@ const unblockStudent = (id, callback) => {
   );
 };
 
+// Lấy thông tin trạm của học sinh cụ thể
+// SỬA FUNCTION getStudentStations
+const getStudentStations = (studentId, callback) => {
+  const query = `
+    SELECT 
+      pbst.maPhanBoHocSinhTram,
+      pbst.maHocSinh,
+      pbst.maDiemDung,
+      pbst.loaiPhanBo,
+      pbst.thoiGianBatDau,
+      pbst.thoiGianKetThuc,
+      pbst.trangThai,
+      dd.tenDiemDung,
+      dd.moTa as moTaDiemDung,
+      vt.viDo,
+      vt.kinhDo
+    FROM phanbohocsinhtram pbst
+    JOIN diemdung dd ON pbst.maDiemDung = dd.maDiemDung  -- ✅ SỬA DÒNG NÀY
+    LEFT JOIN vitrithuc vt ON dd.maViTriThuc = vt.maViTriThuc
+    WHERE pbst.maHocSinh = ? AND pbst.trangThai = 'Active'
+    ORDER BY pbst.loaiPhanBo DESC, pbst.thoiGianBatDau ASC
+  `;
+
+  db.query(query, [studentId], (err, results) => {
+    if (err) {
+      console.error("❌ Lỗi getStudentStations:", err);
+      callback(err, null);
+    } else {
+      console.log("✅ Raw query results:", results); // Debug log
+
+      // Phân loại theo loại phân bổ
+      const stationData = {
+        sang: results.filter((station) => station.loaiPhanBo === "Sang"),
+        chieu: results.filter((station) => station.loaiPhanBo === "Chieu"),
+        all: results,
+      };
+
+      console.log("✅ Processed station data:", stationData); // Debug log
+      callback(null, stationData);
+    }
+  });
+};
+
+// ✅ HOÀN THIỆN FUNCTION assignStationToStudent
+// SỬA PHẦN KIỂM TRA TRẠM - ĐỔI TỪNG THÁI 1 SANG 'Active'
+const assignStationToStudent = (
+  maHocSinh,
+  maDiemDung,
+  loaiPhanBo = "Sang",
+  callback
+) => {
+  console.log("🔄 Starting assignStationToStudent:", {
+    maHocSinh,
+    maDiemDung,
+    loaiPhanBo,
+  });
+
+  // Bước 1: Kiểm tra học sinh tồn tại
+  const checkStudentQuery = `SELECT * FROM hocsinh WHERE maHocSinh = ? AND trangThai = 'Active'`;
+
+  db.query(checkStudentQuery, [maHocSinh], (checkErr, studentResult) => {
+    if (checkErr) {
+      console.error("❌ Lỗi check student:", checkErr);
+      return callback(checkErr, null);
+    }
+
+    if (studentResult.length === 0) {
+      console.error("❌ Học sinh không tồn tại hoặc không active");
+      return callback(
+        new Error("Học sinh không tồn tại hoặc đã bị khóa"),
+        null
+      );
+    }
+
+    console.log("✅ Student exists:", studentResult[0].tenHocSinh);
+
+    // Bước 2: Kiểm tra trạm tồn tại - ✅ SỬA ĐIỀU KIỆN
+    const checkStationQuery = `SELECT * FROM diemdung WHERE maDiemDung = ? AND trangThai = 'Active'`;
+
+    console.log("🔍 Checking station with query:", checkStationQuery);
+    console.log("🔍 Station ID to check:", maDiemDung);
+
+    db.query(checkStationQuery, [maDiemDung], (stationErr, stationResult) => {
+      if (stationErr) {
+        console.error("❌ Lỗi check station:", stationErr);
+        return callback(stationErr, null);
+      }
+
+      console.log("🔍 Station query result:", stationResult);
+      console.log("🔍 Found stations count:", stationResult.length);
+
+      if (stationResult.length === 0) {
+        console.error(
+          "❌ Trạm không tồn tại hoặc không active với ID:",
+          maDiemDung
+        );
+        return callback(
+          new Error("Trạm không tồn tại hoặc không hoạt động"),
+          null
+        );
+      }
+
+      const station = stationResult[0];
+      console.log("✅ Station exists and active:", station.tenDiemDung);
+
+      // Bước 3: Kiểm tra đã có phân bổ cho loại này chưa
+      const checkExistingQuery = `
+        SELECT * FROM phanbohocsinhtram 
+        WHERE maHocSinh = ? AND loaiPhanBo = ? AND trangThai = 'Active'
+      `;
+
+      db.query(
+        checkExistingQuery,
+        [maHocSinh, loaiPhanBo],
+        (existErr, existResult) => {
+          if (existErr) {
+            console.error("❌ Lỗi check existing:", existErr);
+            return callback(existErr, null);
+          }
+
+          // Bước 4: Insert hoặc Update
+          if (existResult.length > 0) {
+            // Cập nhật phân bổ hiện có
+            console.log("🔄 Updating existing assignment");
+            const updateQuery = `
+            UPDATE phanbohocsinhtram 
+            SET maDiemDung = ?, thoiGianBatDau = CURDATE(), thoiGianKetThuc = NULL
+            WHERE maHocSinh = ? AND loaiPhanBo = ? AND trangThai = 'Active'
+          `;
+
+            db.query(
+              updateQuery,
+              [maDiemDung, maHocSinh, loaiPhanBo],
+              (updateErr, updateResult) => {
+                if (updateErr) {
+                  console.error("❌ Lỗi update assignment:", updateErr);
+                  return callback(updateErr, null);
+                }
+
+                console.log("✅ Assignment updated successfully");
+                callback(null, {
+                  message: `Cập nhật trạm ${loaiPhanBo.toLowerCase()} thành công`,
+                  maHocSinh,
+                  maDiemDung,
+                  loaiPhanBo,
+                  action: "updated",
+                });
+              }
+            );
+          } else {
+            // Tạo phân bổ mới
+            console.log("➕ Creating new assignment");
+            const insertQuery = `
+            INSERT INTO phanbohocsinhtram (maHocSinh, maDiemDung, loaiPhanBo, thoiGianBatDau, trangThai) 
+            VALUES (?, ?, ?, CURDATE(), 'Active')
+          `;
+
+            db.query(
+              insertQuery,
+              [maHocSinh, maDiemDung, loaiPhanBo],
+              (insertErr, insertResult) => {
+                if (insertErr) {
+                  console.error("❌ Lỗi insert assignment:", insertErr);
+                  return callback(insertErr, null);
+                }
+
+                console.log("✅ Assignment created successfully");
+                callback(null, {
+                  message: `Gán trạm ${loaiPhanBo.toLowerCase()} thành công`,
+                  maHocSinh,
+                  maDiemDung,
+                  loaiPhanBo,
+                  maPhanBoHocSinhTram: insertResult.insertId,
+                  action: "created",
+                });
+              }
+            );
+          }
+        }
+      );
+    });
+  });
+};
+
+// ✅ ĐẢMBẢO EXPORT
 module.exports = {
   getAllStudents,
   getStudentById,
+  getStudentStations,
   deleteStudent,
   addStudent,
   updateStudent,
   blockStudent,
   unblockStudent,
+  assignStationToStudent, // ✅ PHẢI CÓ DÒNG NÀY
 };

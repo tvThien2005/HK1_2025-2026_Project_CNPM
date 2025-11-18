@@ -1,9 +1,8 @@
 // frontend/components/Sidebar.js
 import React from "react";
 import Link from "next/link";
-import { Nav, NavItem, NavLink } from "react-bootstrap";
-import NavbarCollapse from "react-bootstrap/NavbarCollapse";
-import NavbarToggle from "react-bootstrap/NavbarToggle";
+import { usePathname } from "next/navigation";
+import { Nav, NavItem } from "react-bootstrap";
 import {
   FaTachometerAlt,
   FaCalendarAlt,
@@ -14,13 +13,25 @@ import {
   FaMapMarkerAlt,
   FaUser,
   FaUserTie,
+  FaRoute,
 } from "react-icons/fa"; // Import icons
 
 const Sidebar = () => {
+  const pathname = usePathname();
+
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
-    router.push("/sign-in");
+    window.location.href = "/sign-in";
   };
+
+  // Hàm kiểm tra active state
+  const isActive = (href) => {
+    if (href === "/") {
+      return pathname === href;
+    }
+    return pathname === href || pathname.startsWith(href + "/");
+  };
+
   return (
     <div
       className="bg-dark text-white p-4"
@@ -30,104 +41,136 @@ const Sidebar = () => {
         <FaTachometerAlt size={30} className="me-3" />
         <h2 className="text-white mb-0">Admin</h2>
       </div>
-      <NavbarToggle aria-controls="basic-navbar-nav" />
-      <NavbarCollapse
-        id="basic-navbar-nav"
-        className="justify-content-end"
-      ></NavbarCollapse>
-      <Nav className="flex-column">
+
+      <Nav className="flex-column sidebar-nav">
         <NavItem className="mb-2">
-          <NavLink
-            as={Link}
+          <Link
             href="/"
-            className="text-white d-flex align-items-center"
+            className={`nav-link text-white d-flex align-items-center nav-link-custom ${
+              isActive("/") ? "active" : ""
+            }`}
           >
             <FaTachometerAlt className="me-2" /> Dashboard
-          </NavLink>
+          </Link>
         </NavItem>
+
         <NavItem className="mb-2">
-          <NavLink
-            as={Link}
+          <Link
             href="/schedules"
-            className="text-white d-flex align-items-center"
+            className={`nav-link text-white d-flex align-items-center nav-link-custom ${
+              isActive("/schedules") ? "active" : ""
+            }`}
           >
-            <FaCalendarAlt className="me-2" /> Quản lí lịch trình
-          </NavLink>
+            <FaCalendarAlt className="me-2" /> Quản lý lịch trình
+          </Link>
         </NavItem>
+
         <NavItem className="mb-2">
-          <NavLink
-            as={Link}
+          <Link
+            style={{ whiteSpace: "nowrap" }}
+            href="/routes"
+            className={`nav-link text-white d-flex align-items-center nav-link-custom ${
+              isActive("/routes") ? "active" : ""
+            }`}
+          >
+            <FaRoute className="me-2" /> Quản lý tuyến đường
+          </Link>
+        </NavItem>
+
+        <NavItem className="mb-2">
+          <Link
             href="/bus"
-            className="text-white d-flex align-items-center"
+            className={`nav-link text-white d-flex align-items-center nav-link-custom ${
+              isActive("/bus") ? "active" : ""
+            }`}
           >
-            <FaBus className="me-2" /> Quản lí xe buýt
-          </NavLink>
+            <FaBus className="me-2" /> Quản lý xe buýt
+          </Link>
         </NavItem>
+
         <NavItem className="mb-2">
-          <NavLink
-            as={Link}
+          <Link
             href="/Students"
-            className="text-white d-flex align-items-center"
+            className={`nav-link text-white d-flex align-items-center nav-link-custom ${
+              isActive("/Students") ? "active" : ""
+            }`}
           >
-            <FaUser className="me-2" /> Quản lí học sinh
-          </NavLink>
+            <FaUser className="me-2" /> Quản lý học sinh
+          </Link>
         </NavItem>
+
         <NavItem className="mb-2">
-          <NavLink
-            as={Link}
+          <Link
             href="/Drivers"
-            className="text-white d-flex align-items-center"
+            className={`nav-link text-white d-flex align-items-center nav-link-custom ${
+              isActive("/Drivers") ? "active" : ""
+            }`}
           >
             <FaUserTie className="me-2" /> Quản lí tài xế
-          </NavLink>
+          </Link>
         </NavItem>
         <NavItem className="mb-2">
-          <NavLink
-            as={Link}
+          <Link
             href="/Locations"
-            className="text-white d-flex align-items-center"
+            className={`nav-link text-white d-flex align-items-center nav-link-custom ${
+              isActive("/Locations") ? "active" : ""
+            }`}
           >
             <FaMapMarkerAlt className="me-2" /> Cập nhật vị trí xe
-          </NavLink>
+          </Link>
         </NavItem>
+
         <NavItem className="mb-2">
-          <NavLink
-            as={Link}
+          <Link
             href="/AssignDrivers"
-            className="text-white d-flex align-items-center"
+            className={`nav-link text-white d-flex align-items-center nav-link-custom ${
+              isActive("/AssignDrivers") ? "active" : ""
+            }`}
           >
             <FaCar className="me-2" /> Phân công tài xế
-          </NavLink>
+          </Link>
         </NavItem>
+
         <NavItem className="mb-2">
-          <NavLink
-            as={Link}
+          <Link
             href="/users"
-            className="text-white d-flex align-items-center"
+            className={`nav-link text-white d-flex align-items-center nav-link-custom ${
+              isActive("/users") ? "active" : ""
+            }`}
           >
-            <FaUserCog className="me-2" /> Quản lí tài khoản
-          </NavLink>
+            <FaUserCog className="me-2" /> Quản lý tài khoản
+          </Link>
         </NavItem>
+
         <NavItem className="mb-2">
-          <NavLink
-            as={Link}
+          <Link
             href="/notifications"
-            className="text-white d-flex align-items-center"
+            className={`nav-link text-white d-flex align-items-center nav-link-custom ${
+              isActive("/notifications") ? "active" : ""
+            }`}
           >
             <FaBell className="me-2" /> Gửi thông báo
-          </NavLink>
+          </Link>
         </NavItem>
-        {/* <div className="mt-auto pt-3 border-top">
-          <Nav.Link
-            className="text-white"
-            onClick={handleLogout}
-            style={{ cursor: "pointer" }}
-          >
-            <i className="bi bi-box-arrow-right me-2"></i>
-            Đăng xuất
-          </Nav.Link>
-        </div> */}
       </Nav>
+
+      <style jsx>{`
+        .nav-link-custom {
+          padding: 10px 15px;
+          border-radius: 5px;
+          transition: all 0.3s ease;
+          text-decoration: none;
+        }
+
+        .nav-link-custom:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-link-custom.active {
+          background-color: rgba(255, 255, 255, 0.2);
+          font-weight: bold;
+        }
+      `}</style>
     </div>
   );
 };

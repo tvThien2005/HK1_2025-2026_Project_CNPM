@@ -20,6 +20,7 @@ app.use(
 );
 
 // Routes
+app.use("/api/routes", require("./routes/routeRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/students", require("./routes/studentRoutes"));
 app.use("/api/tracking", require("./routes/trackingRoutes"));
@@ -44,4 +45,10 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server đang chạy trên port ${PORT}`);
   console.log(`📁 Upload path: http://localhost:${PORT}/images/drivers/`);
+  console.log(`📊 URL: http://localhost:${PORT}`);
+  console.log(`👥 Users API: http://localhost:${PORT}/api/users`);
+  console.log(`🎓 Students API: http://localhost:${PORT}/api/students`);
+  console.log(`🚌 Buses API: http://localhost:${PORT}/api/buses`);
+  console.log(`📍 Tracking API: http://localhost:${PORT}/api/tracking`); // MỚI
+  console.log(`🛣️  Route API: http://localhost:${PORT}/api/routes`); // MỚI
 });
