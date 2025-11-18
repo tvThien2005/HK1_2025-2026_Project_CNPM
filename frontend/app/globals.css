@@ -163,7 +163,7 @@ body {
   box-shadow: none !important;
   padding: 0 !important;
 }
-.modal.show .modal-dialog {
+/* .modal.show .modal-dialog {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -180,7 +180,7 @@ body {
 
 .modal-content {
   overflow: visible !important;
-}
+} */
 .no-border-table {
   border: none !important;
 }
@@ -198,4 +198,163 @@ body {
 
 .no-border-table tbody tr {
   border-bottom: 1px solid transparent !important;
+}
+
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.my-4 {
+  color: black !important;
+}
+
+/* Xóa viền hình chữ nhật của Leaflet markers */
+.leaflet-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Custom classes cho các icon của chúng ta */
+.custom-bus-icon,
+.custom-school-icon,
+.custom-station-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Xóa shadow DOM wrapper */
+.leaflet-marker-icon .leaflet-shadow-pane,
+.leaflet-div-icon .leaflet-shadow-pane {
+  display: none !important;
+}
+
+/* Xóa các element không cần thiết */
+.leaflet-marker-icon svg,
+.leaflet-div-icon svg {
+  display: none !important;
+}
+
+/* Thêm vào file CSS global hoặc module */
+.sidebar-nav .nav-link {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  margin: 4px 0;
+}
+
+.sidebar-nav .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(5px);
+}
+
+.sidebar-nav .nav-link.active {
+  background-color: #0d6efd;
+  color: white !important;
+  font-weight: bold;
+}
+
+.sidebar-nav .nav-link:active {
+  background-color: #0b5ed7;
+  transform: scale(0.98);
+}
+
+/* Fix icon và text alignment */
+.btn.d-flex.align-items-center {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
+}
+
+/* Đảm bảo text trong table nằm giữa */
+.table td.text-center {
+  vertical-align: middle !important;
+}
+
+.table th.text-center {
+  vertical-align: middle !important;
+}
+
+/* Fix spacing cho các button trong table */
+.d-flex.gap-2.flex-wrap {
+  gap: 8px !important;
+}
+
+/* Đảm bảo badge nằm giữa */
+.badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Fix modal content alignment */
+.modal-body .form-group {
+  margin-bottom: 1rem;
+}
+
+/* Đảm bảo các icon trong modal không bị tách hàng */
+.modal .btn.d-flex.align-items-center {
+  min-height: 38px;
+}
+
+.auth-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.auth-card {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.auth-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 15px 15px 0 0;
+}
+
+.btn-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+}
+
+.btn-gradient:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  color: white;
+}
+.navbar .dropdown-toggle::after {
+  display: none !important;
+}
+.table-container {
+  border-radius: 10px;
+  overflow: hidden;
+  /* box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05); */
 }

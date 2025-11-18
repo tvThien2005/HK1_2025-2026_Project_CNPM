@@ -1,4 +1,4 @@
-"use client";
+~"use client";
 
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
@@ -405,33 +405,9 @@ const StudentsPage = () => {
   };
 
   // Lấy dữ liệu từ backend
-  // SỬA PHẦN DEBUG trong fetchStudents
   const fetchStudents = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/students");
-      console.log("📊 API Response:", res.data);
-
-      // ✅ THÊM DEBUG CHI TIẾT
-      res.data.forEach(
-        (
-          student: {
-            maHocSinh: any;
-            tenHocSinh: any;
-            maDiaChi: any;
-            diaChi: { viDo: any; kinhDo: any };
-          },
-          index: number
-        ) => {
-          console.log(`🔍 Student ${index + 1}:`, {
-            maHocSinh: student.maHocSinh,
-            tenHocSinh: student.tenHocSinh,
-            maDiaChi: student.maDiaChi,
-            diaChi: student.diaChi,
-            hasCoordinates: !!(student.diaChi?.viDo && student.diaChi?.kinhDo),
-          });
-        }
-      );
-
       setStudents(res.data);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách học sinh:", error);
@@ -618,7 +594,9 @@ const StudentsPage = () => {
   };
 
   // Mở modal sửa
-  const handleShowEditModal = async (student: Student) => {
+  const handleShowEditModal = (student: Student) => {
+    console.log("🔍 Opening edit modal for student:", student);
+    console.log("🖼️ Student image path:", student.anhHocSinh);
     setSelectedStudent(student);
 
     const diaChi = student.diaChi || {
@@ -629,11 +607,16 @@ const StudentsPage = () => {
       thanhPho: "",
     };
 
+    const previewUrl = student.anhHocSinh
+      ? `http://localhost:5000${student.anhHocSinh}`
+      : "";
+    console.log("🖼️ Setting preview URL:", previewUrl);
+
     setFormData({
       tenHocSinh: student.tenHocSinh,
       lop: student.lop,
       anhHocSinh: student.anhHocSinh,
-      anhPreview: student.anhHocSinh || "",
+      anhPreview: previewUrl,
       soNha: diaChi.soNha || "",
       duong: diaChi.duong || "",
       phuongXa: diaChi.phuongXa || "",
@@ -646,17 +629,24 @@ const StudentsPage = () => {
     setSelectedDistrict("");
     setSelectedWard("");
 
-    if (!diaChi.thanhPho) {
-      setShowEditModal(true);
-      return;
-    }
+    // ✅ HIỂN THỊ MODAL NGAY LẬP TỨC
+    setShowEditModal(true);
 
+    // ✅ LOAD ĐỊA CHỈ BẤT ĐỒNG BỘ SAU KHI MODAL ĐÃ MỞ
+    if (diaChi.thanhPho) {
+      loadAddressDataAsync(diaChi);
+    }
+  };
+
+  // ✅ TÁCH RIÊNG FUNCTION LOAD ĐỊA CHỈ BẤT ĐỒNG BỘ
+  const loadAddressDataAsync = async (diaChi: any) => {
     try {
+      console.log("🔄 Loading address data in background...");
+
       // Bước 1: Tìm province code
       const provinceCode = findProvinceCode(diaChi.thanhPho);
       if (!provinceCode) {
         console.warn("Không tìm thấy province code cho:", diaChi.thanhPho);
-        setShowEditModal(true);
         return;
       }
 
@@ -667,7 +657,6 @@ const StudentsPage = () => {
       await fetchDistricts(provinceCode);
 
       if (!diaChi.quanHuyen) {
-        setShowEditModal(true);
         return;
       }
 
@@ -678,7 +667,6 @@ const StudentsPage = () => {
       );
       if (!districtCode) {
         console.warn("Không tìm thấy district code cho:", diaChi.quanHuyen);
-        setShowEditModal(true);
         return;
       }
 
@@ -689,7 +677,6 @@ const StudentsPage = () => {
       await fetchWards(districtCode);
 
       if (!diaChi.phuongXa) {
-        setShowEditModal(true);
         return;
       }
 
@@ -704,11 +691,11 @@ const StudentsPage = () => {
       } else {
         setSelectedWard(wardCode);
       }
-    } catch (error) {
-      console.error("Lỗi khi load địa chỉ:", error);
-    }
 
-    setShowEditModal(true);
+      console.log("✅ Address data loaded successfully");
+    } catch (error) {
+      console.error("❌ Lỗi khi load địa chỉ:", error);
+    }
   };
 
   // Đóng modal
@@ -837,25 +824,25 @@ const StudentsPage = () => {
 
     try {
       const formDataToSend = new FormData();
+
+      // ✅ TỐI ƯU: Chỉ append các field bắt buộc
       formDataToSend.append("tenHocSinh", formData.tenHocSinh);
       formDataToSend.append("lop", formData.lop);
-      formDataToSend.append("soNha", formData.soNha);
-      formDataToSend.append("duong", formData.duong);
-      formDataToSend.append("phuongXa", formData.phuongXa);
-      formDataToSend.append("quanHuyen", formData.quanHuyen);
-      formDataToSend.append("thanhPho", formData.thanhPho);
-
-      // QUAN TRỌNG: Chỉ append file nếu có file mới
-      if (formData.anhHocSinh instanceof File) {
-        formDataToSend.append("anhHocSinh", formData.anhHocSinh);
-      }
-
       formDataToSend.append("trangThai", selectedStudent.trangThai);
 
-      // DEBUG: Kiểm tra tất cả dữ liệu trong FormData
-      console.log("📤 DEBUG FormData contents:");
-      for (let [key, value] of formDataToSend.entries()) {
-        console.log(`${key}:`, value);
+      // ✅ TỐI ƯU: Chỉ append địa chỉ nếu có giá trị
+      if (formData.soNha) formDataToSend.append("soNha", formData.soNha);
+      if (formData.duong) formDataToSend.append("duong", formData.duong);
+      if (formData.phuongXa)
+        formDataToSend.append("phuongXa", formData.phuongXa);
+      if (formData.quanHuyen)
+        formDataToSend.append("quanHuyen", formData.quanHuyen);
+      if (formData.thanhPho)
+        formDataToSend.append("thanhPho", formData.thanhPho);
+
+      // ✅ TỐI ƯU: Chỉ append file nếu có file mới
+      if (formData.anhHocSinh instanceof File) {
+        formDataToSend.append("anhHocSinh", formData.anhHocSinh);
       }
 
       const response = await axios.put(
@@ -868,16 +855,11 @@ const StudentsPage = () => {
         }
       );
 
-      console.log("✅ Response:", response.data);
-
       fetchStudents();
       handleCloseModal();
       showAlert("Cập nhật học sinh thành công", "success");
     } catch (error: any) {
-      console.error("❌ Lỗi chi tiết khi cập nhật:", error);
-      console.error("📊 Error response:", error.response?.data);
-      console.error("🔧 Error config:", error.config);
-
+      console.error("Lỗi khi cập nhật học sinh:", error);
       showAlert(
         error.response?.data?.message || "Lỗi khi cập nhật học sinh",
         "danger"
@@ -1025,6 +1007,18 @@ const StudentsPage = () => {
                             whiteSpace: "nowrap",
                           }}
                           className="rounded"
+                          onError={(e) => {
+                            console.error(
+                              "❌ Lỗi load ảnh trong bảng:",
+                              `http://localhost:5000${student.anhHocSinh}`
+                            );
+                          }}
+                          onLoad={() => {
+                            console.log(
+                              "✅ Load ảnh trong bảng thành công:",
+                              `http://localhost:5000${student.anhHocSinh}`
+                            );
+                          }}
                         />
                       ) : (
                         <FaUser size={20} className="text-muted" />
@@ -1269,6 +1263,18 @@ const StudentsPage = () => {
                           src={formData.anhPreview}
                           alt="Preview"
                           style={{ maxHeight: "180px", objectFit: "contain" }}
+                          onError={(e) => {
+                            console.error(
+                              "❌ Lỗi load ảnh:",
+                              formData.anhPreview
+                            );
+                          }}
+                          onLoad={() => {
+                            console.log(
+                              "✅ Load ảnh thành công:",
+                              formData.anhPreview
+                            );
+                          }}
                         />
                       ) : (
                         <div className="text-muted text-center">
@@ -1455,6 +1461,25 @@ const StudentsPage = () => {
                           alt="Preview"
                           className="img-fluid rounded"
                           style={{ maxHeight: "180px", objectFit: "contain" }}
+                          onError={(e) => {
+                            console.error(
+                              "❌ Lỗi load ảnh:",
+                              formData.anhPreview
+                            );
+                            // Nếu lỗi load ảnh từ server, reset về trống
+                            if (!formData.anhPreview.startsWith("blob:")) {
+                              setFormData((prev) => ({
+                                ...prev,
+                                anhPreview: "",
+                              }));
+                            }
+                          }}
+                          onLoad={() => {
+                            console.log(
+                              "✅ Load ảnh thành công:",
+                              formData.anhPreview
+                            );
+                          }}
                         />
                       ) : (
                         <div className="text-muted text-center">
