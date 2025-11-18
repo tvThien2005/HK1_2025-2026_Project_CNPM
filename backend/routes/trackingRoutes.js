@@ -2,30 +2,12 @@ const express = require("express");
 const router = express.Router();
 const trackingController = require("../controllers/trackingController");
 
-// Route chính để test
-router.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "Tracking API đang hoạt động!",
-    endpoints: {
-      "GET /bus-data": "Lấy tất cả dữ liệu bus",
-      "GET /hocsinh": "Lấy danh sách học sinh",
-      "GET /diachi": "Lấy danh sách địa chỉ",
-      "GET /vitrithuc": "Lấy vị trí thực",
-      "GET /taixe": "Lấy danh sách tài xế",
-      "GET /xebuyt": "Lấy danh sách xe bus",
-      "GET /chuyenxe": "Lấy danh sách chuyến xe",
-      "GET /lichtrinh": "Lấy lịch trình",
-      "GET /tuyenduong": "Lấy tuyến đường",
-      "GET /phanbohocsinh": "Lấy phân bố học sinh",
-      "POST /update-position": "Cập nhật vị trí xe",
-      "GET /current-positions": "Lấy vị trí hiện tại",
-    },
-  });
-});
+// ==================== ROUTES CŨ - GIỮ NGUYÊN ====================
 
-// Routes cho theo dõi vị trí xe
+// Route chính lấy tất cả dữ liệu
 router.get("/bus-data", trackingController.getAllBusData);
+
+// Routes lấy dữ liệu từng bảng
 router.get("/hocsinh", trackingController.getHocSinh);
 router.get("/diachi", trackingController.getDiaChi);
 router.get("/vitrithuc", trackingController.getViTriThuc);
@@ -36,8 +18,21 @@ router.get("/lichtrinh", trackingController.getLichTrinh);
 router.get("/tuyenduong", trackingController.getTuyenDuong);
 router.get("/phanbohocsinh", trackingController.getPhanBoHocSinh);
 
-// Route cập nhật vị trí xe real-time
+// Routes cập nhật vị trí
 router.post("/update-position", trackingController.updateBusPosition);
 router.get("/current-positions", trackingController.getCurrentPositions);
+
+// ==================== ✅ ROUTES MỚI - THÊM VÀO ====================
+
+// ✅ Route chính với trạm (MỚI)
+router.get(
+  "/bus-data-with-stations",
+  trackingController.getAllBusDataWithStations
+);
+
+// ✅ Routes riêng lẻ cho trạm
+router.get("/diemdung", trackingController.getDiemDung);
+router.get("/phanbohocsinhtram", trackingController.getPhanBoHocSinhTram);
+router.get("/phanbotramxe", trackingController.getPhanBoTramXe);
 
 module.exports = router;

@@ -29,6 +29,99 @@ body {
   color: black !important;
 }
 
+/* Xóa viền hình chữ nhật của Leaflet markers */
+.leaflet-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Custom classes cho các icon của chúng ta */
+.custom-bus-icon,
+.custom-school-icon,
+.custom-station-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Xóa shadow DOM wrapper */
+.leaflet-marker-icon .leaflet-shadow-pane,
+.leaflet-div-icon .leaflet-shadow-pane {
+  display: none !important;
+}
+
+/* Xóa các element không cần thiết */
+.leaflet-marker-icon svg,
+.leaflet-div-icon svg {
+  display: none !important;
+}
+
+/* Thêm vào file CSS global hoặc module */
+.sidebar-nav .nav-link {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  margin: 4px 0;
+}
+
+.sidebar-nav .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(5px);
+}
+
+.sidebar-nav .nav-link.active {
+  background-color: #0d6efd;
+  color: white !important;
+  font-weight: bold;
+}
+
+.sidebar-nav .nav-link:active {
+  background-color: #0b5ed7;
+  transform: scale(0.98);
+}
+
+/* Fix icon và text alignment */
+.btn.d-flex.align-items-center {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
+}
+
+/* Đảm bảo text trong table nằm giữa */
+.table td.text-center {
+  vertical-align: middle !important;
+}
+
+.table th.text-center {
+  vertical-align: middle !important;
+}
+
+/* Fix spacing cho các button trong table */
+.d-flex.gap-2.flex-wrap {
+  gap: 8px !important;
+}
+
+/* Đảm bảo badge nằm giữa */
+.badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Fix modal content alignment */
+.modal-body .form-group {
+  margin-bottom: 1rem;
+}
+
+/* Đảm bảo các icon trong modal không bị tách hàng */
+.modal .btn.d-flex.align-items-center {
+  min-height: 38px;
+}
+
 .auth-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

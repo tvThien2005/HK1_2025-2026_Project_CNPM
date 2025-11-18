@@ -2,38 +2,40 @@ const studentService = require("../services/studentService");
 const path = require("path");
 const fs = require("fs");
 
-// controllers/studentController.js - CẬP NHẬT getStudents
+// SỬA LẠI getStudents - Format dữ liệu đúng cách
 const getStudents = (req, res) => {
   studentService.getAllStudents((err, students) => {
     if (err) return res.status(500).json({ error: "Lỗi server" });
 
-    // Format dữ liệu để trả về frontend
+    // ✅ SỬA FORMAT DỮ LIỆU - BỎ NESTED toaDo, GỘP VÀO diaChi
     const formattedStudents = students.map((student) => ({
       maHocSinh: student.maHocSinh,
       tenHocSinh: student.tenHocSinh,
       anhHocSinh: student.anhHocSinh,
       lop: student.lop,
       trangThai: student.trangThai,
-      diaChi: {
-        soNha: student.soNha,
-        duong: student.duong,
-        phuongXa: student.phuongXa,
-        quanHuyen: student.quanHuyen,
-        thanhPho: student.thanhPho,
-      },
-      // Thêm tọa độ nếu cần
-      toaDo:
-        student.kinhDo && student.viDo
-          ? {
-              kinhDo: student.kinhDo,
-              viDo: student.viDo,
-            }
-          : null,
+      maDiaChi: student.maDiaChi,
+      // ✅ QUAN TRỌNG: Đưa tọa độ VÀO object diaChi
+      diaChi: student.maDiaChi
+        ? {
+            soNha: student.soNha,
+            duong: student.duong,
+            phuongXa: student.phuongXa,
+            quanHuyen: student.quanHuyen,
+            thanhPho: student.thanhPho,
+            // ✅ THÊM tọa độ vào đây
+            viDo: student.viDo ? parseFloat(student.viDo) : null,
+            kinhDo: student.kinhDo ? parseFloat(student.kinhDo) : null,
+          }
+        : null,
     }));
 
+    // ✅ THÊM DEBUG LOG
+    console.log("📊 Sample formatted student:", formattedStudents[0]);
     console.log(
       `✅ Trả về ${formattedStudents.length} học sinh với địa chỉ đầy đủ`
     );
+
     res.json(formattedStudents);
   });
 };
@@ -350,6 +352,89 @@ const getStudentById = (req, res) => {
   });
 };
 
+// Lấy thông tin trạm của học sinh
+const getStudentStations = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    studentService.getStudentStations(studentId, (err, stationData) => {
+      if (err) {
+        console.error("❌ Lỗi getStudentStations:", err);
+        return res.status(500).json({
+          success: false,
+          error: "Lỗi khi lấy thông tin trạm của học sinh",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: stationData,
+      });
+    });
+  } catch (error) {
+    console.error("❌ Lỗi getStudentStations controller:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// controllers/studentController.js
+
+// controllers/studentController.js
+
+// ✅ ĐẢM BẢO FUNCTION NÀY ĐƯỢC EXPORT ĐÚNG CÁCH
+const assignStudentToStation = async (req, res) => {
+  try {
+    const { maHocSinh, maDiemDung, loaiPhanBo = "Sang" } = req.body;
+
+    console.log("📥 Assign station request:", {
+      maHocSinh,
+      maDiemDung,
+      loaiPhanBo,
+    });
+
+    // Validate input
+    if (!maHocSinh || !maDiemDung) {
+      return res.status(400).json({
+        success: false,
+        error: "Thiếu thông tin maHocSinh hoặc maDiemDung",
+      });
+    }
+
+    // Gọi service function
+    studentService.assignStationToStudent(
+      maHocSinh,
+      maDiemDung,
+      loaiPhanBo,
+      (err, result) => {
+        if (err) {
+          console.error("❌ Lỗi assign station:", err);
+          return res.status(500).json({
+            success: false,
+            error: err.message || "Lỗi khi gán trạm cho học sinh",
+          });
+        }
+
+        console.log("✅ Station assigned successfully");
+        res.json({
+          success: true,
+          message: "Gán trạm cho học sinh thành công",
+          data: result,
+        });
+      }
+    );
+  } catch (error) {
+    console.error("❌ Controller error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// ✅ QUAN TRỌNG: THÊM VÀO EXPORTS
 module.exports = {
   getStudents,
   getStudentById,
@@ -358,4 +443,6 @@ module.exports = {
   editStudent,
   blockStudent,
   unblockStudent,
+  getStudentStations,
+  assignStudentToStation, // ✅ THÊM DÒNG NÀY
 };

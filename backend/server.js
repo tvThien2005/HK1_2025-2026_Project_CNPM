@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fileUpload = require("express-fileupload");
-
 const app = express();
 
 // Middleware
@@ -29,6 +28,7 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/students", require("./routes/studentRoutes"));
 app.use("/api/buses", require("./routes/busRoutes")); // Quản lý xe
 app.use("/api/tracking", require("./routes/trackingRoutes")); // THEO DÕI VỊ TRÍ XE - MỚI
+app.use("/api/routes", require("./routes/routeRoutes")); // Quản lý tuyến đường
 
 // Route mặc định để test
 app.get("/", (req, res) => {
@@ -53,4 +53,5 @@ app.listen(PORT, () => {
   console.log(`🎓 Students API: http://localhost:${PORT}/api/students`);
   console.log(`🚌 Buses API: http://localhost:${PORT}/api/buses`);
   console.log(`📍 Tracking API: http://localhost:${PORT}/api/tracking`); // MỚI
+  console.log(`🛣️  Route API: http://localhost:${PORT}/api/routes`); // MỚI
 });
