@@ -459,3 +459,12 @@ WHERE maPhanBoHocSinh > 0;
 
 -- Bật lại safe updates nếu bạn muốn
 SET SQL_SAFE_UPDATES = 1;
+
+-- ***************************************************************
+-- 9. CHUYỂN TẤT CẢ NGÀY LỊCH TRÌNH SANG HÔM NAY
+-- ***************************************************************
+SET SQL_SAFE_UPDATES = 0;
+UPDATE lichTrinh
+SET ngay = CURDATE()
+WHERE maLichTrinh > 0;
+SET SQL_SAFE_UPDATES = 1;

@@ -55,10 +55,10 @@ const getStudentsByTrip = (req, res) => {
 const getLichTrinh = (req, res) => {
   const state = 'InProgress';
   const driverId = req.user.maTaiXe;
-  const day = '2025-11-10';
+  const day = new Date().toISOString().split('T')[0];
   
   const query = `
-    SELECT cx.maChuyenXe, lt.maLichTrinh, lt.thoiGianDi, lt.thoiGianDen
+    SELECT cx.maChuyenXe, lt.maLichTrinh, lt.ngay, lt.thoiGianDi, lt.thoiGianDen
     FROM chuyenXe cx
     JOIN lichTrinh lt ON cx.maLichTrinh = lt.maLichTrinh
     WHERE cx.trangThai = ?
@@ -80,6 +80,7 @@ const getLichTrinh = (req, res) => {
 
     const row = results[0];
     return res.status(200).json({
+      ngay: row.ngay,
       maChuyenXe: row.maChuyenXe,
       maLichTrinh: row.maLichTrinh,
       thoiGianDi: row.thoiGianDi,
@@ -152,11 +153,10 @@ const getTaiKhoanById = (req,res) =>{
 
 const getLichTrinhTrongNgay = (req, res) => {
   const driverId =  req.user.maTaiXe;
-  const requestedDate = req.query.date; 
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
-  //const day = requestedDate || todayStr;
-  const day = '2025-11-10';
+  const day = new Date().toISOString().split('T')[0];
+  console.log(day)
 
   const query = `
     SELECT cx.maChuyenXe, lt.maLichTrinh, td.tenTuyenDuong, lt.thoiGianDi, lt.thoiGianDen, cx.trangThai, COUNT(pbs.maHocSinh) AS soLuongHocSinh

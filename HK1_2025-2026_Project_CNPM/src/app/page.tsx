@@ -8,6 +8,11 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import Image from "next/image";
 
+function HandleTime(time: string) {
+  let add1day = Number(time.substring(8, 10)) + 1;
+  return `${add1day}-${time.substring(5, 7)}-${time.substring(0, 4)}`;
+}
+
 export function  ListStudent({ students, tripId, onChangeStatus, }: {students: any[]; tripId: number | null; onChangeStatus: (tripId: number, maHocSinh: number, trangThai: string) => Promise<void> | void; }){
   return(
     <>
@@ -103,7 +108,7 @@ export function LichTrinh(){
                 <FontAwesomeIcon icon={faRoute}></FontAwesomeIcon>
                 <span>Chuyến đi hiện tại</span>
               </div>
-              <p>Tuyến 01 - Sáng</p>
+              <p>Tuyến ngày: {HandleTime(LT?.ngay)}</p>
               <div>
                 <FontAwesomeIcon icon={faClock}></FontAwesomeIcon>
                 <span> {LT?.thoiGianDi} AM -  {LT?.thoiGianDen} AM</span>
