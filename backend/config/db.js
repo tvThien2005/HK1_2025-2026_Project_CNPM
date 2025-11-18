@@ -5,6 +5,7 @@ const db = mysql.createConnection({
   user: "root",
   password: "",
   database: "school_bus_management",
+  timezone: "local",
 });
 
 db.connect((err) => {

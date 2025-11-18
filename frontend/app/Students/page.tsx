@@ -31,6 +31,7 @@ import {
   FaCheckCircle, // THÊM
   FaExclamationTriangle, // THÊM
   FaTimes,
+  FaUserTie,
 } from "react-icons/fa";
 import axios from "axios";
 
@@ -998,7 +999,6 @@ const StudentsPage = () => {
               <tr style={{ border: "none" }}>
                 <th>Mã học sinh</th>
                 <th>Tên học sinh</th>
-                <th>Ảnh học sinh</th>
                 <th>Lớp học</th>
                 <th>Địa chỉ</th>
                 {/* <th>Trạng thái</th> */}
@@ -1012,23 +1012,43 @@ const StudentsPage = () => {
                     <td>
                       <Badge bg="secondary">#{student.maHocSinh}</Badge>
                     </td>
-                    <td>{student.tenHocSinh}</td>
-                    <td align="center">
-                      {student.anhHocSinh ? (
-                        <img
-                          src={`http://localhost:5000${student.anhHocSinh}`}
-                          alt={student.tenHocSinh}
-                          style={{
-                            width: "50px",
-                            height: "50px",
-                            objectFit: "cover",
-                            whiteSpace: "nowrap",
-                          }}
-                          className="rounded"
-                        />
-                      ) : (
-                        <FaUser size={20} className="text-muted" />
-                      )}
+
+                    <td>
+                      <div className="d-flex align-items-center">
+                        {/* Hiển thị ảnh học sinh bên cạnh tên */}
+                        {student.anhHocSinh ? (
+                          <img
+                            src={`http://localhost:5000${student.anhHocSinh}`}
+                            alt={student.tenHocSinh}
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              objectFit: "cover",
+                              borderRadius: "50%",
+                              marginRight: "12px",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              borderRadius: "50%",
+                              backgroundColor: "#f8f9fa",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#6c757d",
+                              marginRight: "12px",
+                            }}
+                          >
+                            <FaUserTie size={16} />
+                          </div>
+                        )}
+                        <span className="fw-semibold">
+                          {student.tenHocSinh}
+                        </span>
+                      </div>
                     </td>
                     <td>{student.lop}</td>
                     <td style={{ maxWidth: "200px" }}>
@@ -1118,7 +1138,9 @@ const StudentsPage = () => {
         {/* Modal Thêm học sinh */}
         <Modal show={showAddModal} onHide={handleCloseModal} size="lg">
           <Modal.Header closeButton>
-            <Modal.Title>Thêm học sinh mới</Modal.Title>
+            <Modal.Title className="text-center w-100">
+              <h3>Thêm học sinh mới</h3>
+            </Modal.Title>
           </Modal.Header>
           <Form onSubmit={handleAdd}>
             <Modal.Body>

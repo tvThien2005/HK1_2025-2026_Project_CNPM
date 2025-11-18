@@ -1,13 +1,23 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-
+// const fileUpload = require("express-fileupload");
 const app = express();
 
 // Middleware - QUAN TRỌNG: XÓA express-fileupload
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// app.use(
+//   fileUpload({
+//     createParentPath: true,
+//     limits: {
+//       fileSize: 5 * 1024 * 1024, // 5MB
+//     },
+//     debug: false,
+//   })
+// );
 
 // CHỈ PHỤC VỤ FILE TĨNH - sửa lại cho đúng
 app.use(
@@ -16,7 +26,7 @@ app.use(
 );
 app.use(
   "/images/students",
-  express.static(path.join(__dirname, "public/uploads/students_images"))
+  express.static(path.join(__dirname, "public/images/students"))
 );
 
 // Routes
@@ -28,6 +38,7 @@ app.use("/api/assignDrivers", require("./routes/assignDriverRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/drivers", require("./routes/driverRoutes"));
 app.use("/api/buses", require("./routes/busRoutes"));
+app.use("/api/scheduled", require("./routes/scheduledRoutes"));
 app.use("/api/upload", require("./routes/uploadRoutes"));
 
 // Route mặc định để test
