@@ -15,7 +15,7 @@ const ensureDirectoryExists = (directory) => {
 // Cấu hình lưu trữ file cho tài xế
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = "public/uploads/drivers/";
+    const uploadDir = "public/images/drivers/";
     ensureDirectoryExists(uploadDir);
     cb(null, uploadDir);
   },

@@ -217,78 +217,32 @@ const DriversPage = () => {
     return true;
   };
 
-  // Upload ảnh lên server (nếu có)
-  const uploadImage = async (): Promise<string> => {
-    if (!selectedImage) return formData.anhTaiXe;
-
-    try {
-      // Tạo FormData đúng cách
-      const formDataToSend = new FormData();
-
-      // QUAN TRỌNG: Append file với đúng tên field "image"
-      // Và truyền file object trực tiếp, không phải base64 hay string
-      if (selectedImage instanceof File) {
-        formDataToSend.append("image", selectedImage);
-      } else if (typeof selectedImage === "string") {
-        // Nếu selectedImage là base64 string, chuyển thành blob
-        const response = await fetch(selectedImage);
-        const blob = await response.blob();
-        const file = new File([blob], "driver-image.jpg", {
-          type: "image/jpeg",
-        });
-        formDataToSend.append("image", file);
-      } else {
-        throw new Error("Định dạng ảnh không hợp lệ");
-      }
-
-      console.log("📤 Đang upload ảnh...");
-
-      const response = await axios.post(
-        "http://localhost:5000/api/upload/driver",
-        formDataToSend,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          // Thêm timeout
-          timeout: 30000,
-        }
-      );
-
-      console.log("✅ Upload thành công:", response.data);
-      return response.data.imageUrl;
-    } catch (error: any) {
-      console.error("❌ Lỗi upload ảnh:", error);
-
-      if (error.code === "ECONNABORTED") {
-        throw new Error("Timeout khi upload ảnh");
-      }
-
-      throw new Error(error.response?.data?.message || "Không thể upload ảnh");
-    }
-  };
-
-  // Thêm tài xế
+  // Thêm tài xế (sử dụng FormData để upload file như module học sinh)
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) return;
 
     try {
-      // Upload ảnh nếu có
-      let imageUrl = formData.anhTaiXe;
-      if (selectedImage) {
-        imageUrl = await uploadImage();
-      }
+      const formDataToSend = new FormData();
+      formDataToSend.append("tenTaiXe", formData.tenTaiXe);
+      formDataToSend.append("ngaySinh", formData.ngaySinh);
+      formDataToSend.append("soDienThoai", formData.soDienThoai);
+      formDataToSend.append("soBangLai", formData.soBangLai);
 
-      const driverData = {
-        ...formData,
-        anhTaiXe: imageUrl,
-      };
+      if (selectedImage instanceof File) {
+        formDataToSend.append("anhTaiXe", selectedImage);
+      }
+      formDataToSend.append("trangThai", "Active");
 
       const res = await axios.post(
         "http://localhost:5000/api/drivers",
-        driverData
+        formDataToSend,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
 
       if (res.data.exists) {
@@ -307,27 +261,31 @@ const DriversPage = () => {
     }
   };
 
-  // Sửa tài xế
+  // Sửa tài xế (sử dụng FormData để upload file như module học sinh)
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm() || !selectedDriver) return;
 
     try {
-      // Upload ảnh nếu có ảnh mới
-      let imageUrl = formData.anhTaiXe;
-      if (selectedImage) {
-        imageUrl = await uploadImage();
-      }
+      const formDataToSend = new FormData();
+      formDataToSend.append("tenTaiXe", formData.tenTaiXe);
+      formDataToSend.append("ngaySinh", formData.ngaySinh);
+      formDataToSend.append("soDienThoai", formData.soDienThoai);
+      formDataToSend.append("soBangLai", formData.soBangLai);
 
-      const driverData = {
-        ...formData,
-        anhTaiXe: imageUrl,
-      };
+      if (selectedImage instanceof File) {
+        formDataToSend.append("anhTaiXe", selectedImage);
+      }
 
       await axios.put(
         `http://localhost:5000/api/drivers/${selectedDriver.maTaiXe}`,
-        driverData
+        formDataToSend,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
       fetchDrivers();
       handleCloseModal();

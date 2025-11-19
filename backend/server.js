@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-// const fileUpload = require("express-fileupload");
+const fileUpload = require("express-fileupload");
 const app = express();
 
 // Middleware - QUAN TRỌNG: XÓA express-fileupload
@@ -9,20 +9,20 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// app.use(
-//   fileUpload({
-//     createParentPath: true,
-//     limits: {
-//       fileSize: 5 * 1024 * 1024, // 5MB
-//     },
-//     debug: false,
-//   })
-// );
+app.use(
+  fileUpload({
+    createParentPath: true,
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB
+    },
+    debug: false,
+  })
+);
 
 // CHỈ PHỤC VỤ FILE TĨNH - sửa lại cho đúng
 app.use(
   "/images/drivers",
-  express.static(path.join(__dirname, "public/uploads/drivers"))
+  express.static(path.join(__dirname, "public/images/drivers"))
 );
 app.use(
   "/images/students",
