@@ -1,6 +1,0 @@
-// frontend/app/sign-in/page.tsx
-import AuthForm from "@/components/AuthForm";
-
-export default function SignIn() {
-  return <AuthForm mode="signin" />;
-}
