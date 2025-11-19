@@ -116,7 +116,7 @@ const Sidebar = () => {
               isActive("/Locations") ? "active" : ""
             }`}
           >
-            <FaMapMarkerAlt className="me-2" /> Cập nhật vị trí xe
+            <FaMapMarkerAlt className="me-2" /> Theo dõi chuyến xe
           </Link>
         </NavItem>
 
