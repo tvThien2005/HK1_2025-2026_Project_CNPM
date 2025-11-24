@@ -31,8 +31,9 @@ const checkUsernameExists = (username, callback) => {
     }
   );
 };
+
 const addUser = (user, callback) => {
-  const { tenDangNhap, matKhau, capDo, hoTen } = user;
+  const { tenDangNhap, matKhau, capDo, hoTen, selectedStudent } = user;
 
   // 1️⃣ Kiểm tra username trước khi thêm
   checkUsernameExists(tenDangNhap, (err, exists) => {
@@ -60,14 +61,29 @@ const addUser = (user, callback) => {
 
         const userId = results.insertId;
 
-        db.query(
-          "INSERT INTO quanLyXe (tenQuanLyXe, soDienThoai, ngaySinh, trangThai, maTaiKhoan) VALUES (?, ?, ?, ?, ?)",
-          [hoTen, tenDangNhap, matKhau, trangThai, userId],
-          (err2, results2) => {
-            if (err2) return callback(err2);
-            callback(null, { taiKhoan: results, quanLyXe: results2 });
-          }
-        );
+        if (capDo === "Manager") {
+          // Thêm vào bảng quanLyXe nếu là Manager
+          db.query(
+            "INSERT INTO quanLyXe (tenQuanLyXe, soDienThoai, ngaySinh, trangThai, maTaiKhoan) VALUES (?, ?, ?, ?, ?)",
+            [hoTen, tenDangNhap, matKhau, trangThai, userId],
+            (err2, results2) => {
+              if (err2) return callback(err2);
+              callback(null, { taiKhoan: results, quanLyXe: results2 });
+            }
+          );
+        } else if (capDo === "Parent") {
+          // Thêm vào bảng phuHuynh nếu là Parent
+          db.query(
+            "INSERT INTO phuHuynh (tenPhuHuynh, soDienThoai, ngaySinh, maTaiKhoan, maHocSinh,trangThai) VALUES (?, ?, ?, ?, ?, ?)",
+            [hoTen, tenDangNhap, matKhau, userId, selectedStudent, trangThai],
+            (err2, results2) => {
+              if (err2) return callback(err2);
+              callback(null, { taiKhoan: results, phuHuynh: results2 });
+            }
+          );
+        } else {
+          callback(null, { taiKhoan: results });
+        }
       }
     );
   });

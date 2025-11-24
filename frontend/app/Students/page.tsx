@@ -994,35 +994,43 @@ const StudentsPage = () => {
                     <td>
                       <Badge bg="secondary">#{student.maHocSinh}</Badge>
                     </td>
-                    <td>{student.tenHocSinh}</td>
+
                     <td align="center">
-                      {student.anhHocSinh ? (
-                        <img
-                          src={`http://localhost:5000${student.anhHocSinh}`}
-                          alt={student.tenHocSinh}
-                          style={{
-                            width: "50px",
-                            height: "50px",
-                            objectFit: "cover",
-                            whiteSpace: "nowrap",
-                          }}
-                          className="rounded"
-                          onError={(e) => {
-                            console.error(
-                              "❌ Lỗi load ảnh trong bảng:",
-                              `http://localhost:5000${student.anhHocSinh}`
-                            );
-                          }}
-                          onLoad={() => {
-                            console.log(
-                              "✅ Load ảnh trong bảng thành công:",
-                              `http://localhost:5000${student.anhHocSinh}`
-                            );
-                          }}
-                        />
-                      ) : (
-                        <FaUser size={20} className="text-muted" />
-                      )}
+                      <div className="d-flex align-items-center">
+                        {/* Hiển thị ảnh tài xế bên cạnh tên */}
+                        {student.anhHocSinh ? (
+                          <img
+                            src={`http://localhost:5000${student.anhHocSinh}`}
+                            alt={student.tenHocSinh}
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              objectFit: "cover",
+                              borderRadius: "50%",
+                              marginRight: "12px",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              borderRadius: "50%",
+                              backgroundColor: "#f8f9fa",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#6c757d",
+                              marginRight: "12px",
+                            }}
+                          >
+                            <FaUserTie size={16} />
+                          </div>
+                        )}
+                        <span className="fw-semibold">
+                          {student.tenHocSinh}
+                        </span>
+                      </div>
                     </td>
                     <td>{student.lop}</td>
                     <td style={{ maxWidth: "200px" }}>
