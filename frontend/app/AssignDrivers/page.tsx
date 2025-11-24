@@ -126,13 +126,6 @@ const AssignPage = () => {
     }
   };
 
-  // Hàm mở modal thay đổi trạng thái
-  const handleShowStatusChange = (assign: Assign) => {
-    setSelectedStatusAssign(assign);
-    setNewStatus("");
-    setShowStatusModal(true);
-  };
-
   // Hàm cập nhật trạng thái
   const handleStatusUpdate = async () => {
     if (!selectedStatusAssign || !newStatus) {
@@ -236,14 +229,16 @@ const AssignPage = () => {
   // Search filter
   const filtered = assigns.filter((a) => {
     const q = search.trim().toLowerCase();
-
     if (
       q &&
       !(
         (a.tenTaiXe || "").toLowerCase().includes(q) ||
         (a.tenXe || "").toLowerCase().includes(q) ||
         (a.bienSoXe || "").toLowerCase().includes(q) ||
-        (a.tenTuyenDuong || "").toLowerCase().includes(q)
+        (a.tenTuyenDuong || "").toLowerCase().includes(q) ||
+        (getStatusDisplayName(a.trangThai) || "")
+          .toLowerCase()
+          .includes(getStatusDisplayName(q))
       )
     ) {
       return false;
@@ -304,6 +299,9 @@ const AssignPage = () => {
       maTuyenDuong:
         a.maTuyenDuong ??
         routes.find((r) => r.tenTuyenDuong === a.tenTuyenDuong)?.maTuyenDuong,
+      // maPhanCong:
+      //   a.maChuyenXe ??
+      //   assigns.find((as) => as.trangThai === a.trangThai)?.maChuyenXe,
     };
     return out;
   };

@@ -1,15 +1,12 @@
 const db = require("../config/db");
 
 const getAllScheduled = (callback) => {
-  db.query(
-    "SELECT * FROM lichTrinh WHERE ngay <= CURDATE()",
-    (err, results) => {
-      if (err) {
-        console.error("❌ Lỗi truy vấn SQL:", err);
-      }
-      callback(err, results);
+  db.query("SELECT * FROM lichTrinh ", (err, results) => {
+    if (err) {
+      console.error("❌ Lỗi truy vấn SQL:", err);
     }
-  );
+    callback(err, results);
+  });
 };
 
 const addScheduled = (scheduled, callback) => {

@@ -8,6 +8,7 @@ import {
   FaPaperPlane,
   FaFilter,
   FaSearch,
+  FaEye,
 } from "react-icons/fa";
 import {
   Button,
@@ -36,13 +37,6 @@ interface Notification {
   tenQuanLyXe?: string;
   recipientType: "driver" | "parent";
   maTaiKhoan?: number;
-  tenTaiXe?: string;
-  tenPhuHuynh?: string;
-  ten?: string;
-}
-
-interface Person {
-  maTaiKhoan: number;
   tenTaiXe?: string;
   tenPhuHuynh?: string;
   ten?: string;
@@ -85,6 +79,10 @@ export default function NotificationPage() {
   const [showModal, setShowModal] = useState(false);
   const [content, setContent] = useState("");
   const [selectedRecipients, setSelectedRecipients] = useState<number[]>([]);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailData, setDetailData] = useState<any[]>([]);
+  const [detailInfo, setDetailInfo] = useState<any | null>(null);
   const [recipientType, setRecipientType] = useState<
     "driver" | "parent" | "both"
   >("both");
@@ -364,6 +362,40 @@ export default function NotificationPage() {
     }
   };
 
+  // Fetch and show notification details (recipients with names)
+  const openDetailModal = async (maThongBao: number) => {
+    setDetailLoading(true);
+    setDetailData([]);
+    setDetailInfo(null);
+    try {
+      const res = await axios.get(`${API_BASE}/${maThongBao}`);
+      const data = res.data?.data || [];
+      setDetailData(data);
+      if (data.length > 0) {
+        setDetailInfo({
+          maThongBao: data[0].maThongBao,
+          noiDung: data[0].noiDung,
+          thoiGianTao: data[0].thoiGianTao,
+        });
+      }
+      setShowDetailModal(true);
+    } catch (err: any) {
+      console.error(
+        "❌ Lỗi khi lấy chi tiết thông báo:",
+        err?.response?.data || err.message
+      );
+      showAlert("Không thể tải chi tiết thông báo", "danger");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDetail = () => {
+    setShowDetailModal(false);
+    setDetailData([]);
+    setDetailInfo(null);
+  };
+
   // Filters applied list
   const filtered = useMemo(() => {
     return notifications.filter((n) => {
@@ -391,30 +423,6 @@ export default function NotificationPage() {
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
-
-  // Hiển thị loading ban đầu
-  // if (!isClient) {
-  //   return (
-  //     <div className="container-fluid py-4">
-  //       {alert.show && (
-  //         <Alert
-  //           variant={alert.type === "success" ? "success" : "danger"}
-  //           className="position-fixed top-0 start-50 translate-middle-x mt-3"
-  //           style={{ zIndex: 9999, minWidth: "300px" }}
-  //         >
-  //           {alert.message}
-  //         </Alert>
-  //       )}
-  //       <div
-  //         className="d-flex justify-content-center align-items-center"
-  //         style={{ height: "50vh" }}
-  //       >
-  //         <Spinner animation="border" variant="primary" />
-  //         <span className="ms-3">Đang tải...</span>
-  //       </div>
-  //     </div>
-  //   );
-  // }
 
   return (
     <div className="container-fluid py-4">
@@ -523,6 +531,133 @@ export default function NotificationPage() {
             </Card>
           </Col>
         </Row>
+        {/* Detail modal */}
+        <Modal show={showDetailModal} onHide={closeDetail} size="lg" centered>
+          <Modal.Header className="bg-light position-relative border-0">
+            <div className="w-100 text-center">
+              <Modal.Title className="fw-bold text-primary mb-0">
+                <i className="bi bi-info-circle me-2"></i>
+                Chi tiết thông báo
+              </Modal.Title>
+            </div>
+            <button
+              type="button"
+              className="btn-close position-absolute end-0 me-3"
+              onClick={closeDetail}
+              aria-label="Close"
+            ></button>
+          </Modal.Header>
+          <Modal.Body className="p-4">
+            {detailLoading ? (
+              <div className="d-flex justify-content-center align-items-center py-5">
+                <Spinner
+                  animation="border"
+                  variant="primary"
+                  className="me-3"
+                />
+                <span className="text-muted">Đang tải dữ liệu...</span>
+              </div>
+            ) : (
+              <>
+                {detailInfo && (
+                  <div className="card border-0 shadow-sm mb-4">
+                    <div className="card-body">
+                      <h6 className="card-title fw-bold text-dark mb-3">
+                        <i className="bi bi-chat-text me-2"></i>
+                        Nội dung thông báo
+                      </h6>
+                      <p className="card-text mb-3">{detailInfo.noiDung}</p>
+                      <div className="d-flex align-items-center text-muted">
+                        <i className="bi bi-calendar3 me-2"></i>
+                        <small>
+                          Ngày tạo: {formatDate(detailInfo.thoiGianTao)}
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="card border-0 shadow-sm">
+                  <div className="card-header bg-white border-bottom-0 text-center">
+                    <h6 className="mb-0 fw-bold text-dark">
+                      <i className="bi bi-people me-2"></i>
+                      Danh sách người nhận
+                    </h6>
+                  </div>
+                  <div className="card-body p-0">
+                    <div className="table-responsive">
+                      <Table hover className="mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th className="text-center">#</th>
+                            <th className="text-center">Mã tài khoản</th>
+                            <th className="text-center">Tên người nhận</th>
+                            <th className="text-center">Trạng thái</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detailData.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="text-center py-4">
+                                <div className="text-muted">
+                                  <i className="bi bi-inbox display-6 d-block mb-2"></i>
+                                  Không có dữ liệu
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            detailData.map((r, idx) => (
+                              <tr
+                                key={`${r.maThongBao}-${r.maTaiKhoan}-${idx}`}
+                              >
+                                <td className="text-center text-muted">
+                                  {idx + 1}
+                                </td>
+                                <td className="text-center">
+                                  <code className="text-primary">
+                                    {r.maTaiKhoan}
+                                  </code>
+                                </td>
+                                <td className="text-center">
+                                  <span className="fw-medium">
+                                    {r.tenNguoiNhan || r.tenTaiKhoan || "-"}
+                                  </span>
+                                </td>
+                                <td className="text-center">
+                                  {r.daXem ? (
+                                    <span className="badge bg-success bg-opacity-10 text-success">
+                                      <i className="bi bi-check-circle me-1"></i>
+                                      Đã xem
+                                    </span>
+                                  ) : (
+                                    <span className="badge bg-secondary bg-opacity-10 text-secondary">
+                                      <i className="bi bi-clock me-1"></i>
+                                      Chưa xem
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </Table>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </Modal.Body>
+          <Modal.Footer className="bg-light justify-content-center">
+            <Button
+              variant="outline-secondary"
+              onClick={closeDetail}
+              className="d-flex align-items-center px-4"
+            >
+              <i className="bi bi-x-circle me-2"></i>
+              Đóng
+            </Button>
+          </Modal.Footer>
+        </Modal>
         {/* Bảng thông báo */}
         <Row>
           <Col>
@@ -540,7 +675,7 @@ export default function NotificationPage() {
                         <th style={{ width: "250px" }}>Nội dung</th>
                         <th style={{ width: "150px" }}>Ngày tạo</th>
                         <th style={{ width: "120px" }}>Đối tượng</th>
-                        <th style={{ width: "80px" }}>Xóa</th>
+                        <th style={{ width: "80px" }}>Hành động</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -589,16 +724,28 @@ export default function NotificationPage() {
                             </Badge>
                           </td>
                           <td>
-                            <Button
-                              variant="outline-danger"
-                              style={{ border: "none" }}
-                              size="sm"
-                              onClick={() => handleDelete(n.maThongBao)}
-                              className="me-2 mb-1"
-                              // style={{ width: "40px", height: "40px" }}
-                            >
-                              <FaTrash size={20} />
-                            </Button>
+                            <div className="d-flex justify-content-center align-items-center">
+                              <Button
+                                variant="outline-secondary"
+                                style={{ border: "none" }}
+                                size="sm"
+                                className="me-2 mb-1"
+                                onClick={() => openDetailModal(n.maThongBao)}
+                                title="Xem chi tiết"
+                              >
+                                <FaEye size={20} />
+                              </Button>
+
+                              <Button
+                                variant="outline-danger"
+                                style={{ border: "none" }}
+                                size="sm"
+                                onClick={() => handleDelete(n.maThongBao)}
+                                className="mb-1"
+                              >
+                                <FaTrash size={20} />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -623,17 +770,6 @@ export default function NotificationPage() {
         {totalPages > 1 && (
           <Row className="mt-4">
             <Col>
-              {/* <Card>
-              <Card.Body className="py-3"> */}
-              {/* <div className="d-flex justify-content-between align-items-center"> */}
-              {/* <div className="text-muted">
-                    Hiển thị{" "}
-                    <strong>{(currentPage - 1) * PAGE_SIZE + 1}</strong> đến{" "}
-                    <strong>
-                      {Math.min(currentPage * PAGE_SIZE, filtered.length)}
-                    </strong>{" "}
-                    trong tổng số <strong>{filtered.length}</strong> thông báo
-                  </div> */}
               <div className="d-flex justify-content-center">
                 <Pagination>
                   <Pagination.Prev
@@ -659,9 +795,6 @@ export default function NotificationPage() {
                   />
                 </Pagination>
               </div>
-              {/* </div> */}
-              {/* </Card.Body>
-            </Card> */}
             </Col>
           </Row>
         )}

@@ -8,5 +8,6 @@ router.get("/parents", notificationRoute.getNotificationParent);
 router.get("/driver", notificationRoute.getAllDrivers);
 router.get("/parent", notificationRoute.getAllParents);
 router.post("/", notificationRoute.createNotification);
+router.get("/:id", notificationRoute.getNotificationDetails);
 router.delete("/:id", notificationRoute.removeNotification);
 module.exports = router;
