@@ -108,16 +108,202 @@
 //     </div>
 //   );
 // }
-// src/components/AccountInfo.jsx
-import React from "react";
 
-export default function AccountInfo({ profile }) {
-  if (!profile) return null;
+
+import React, { useState, useEffect } from 'react'
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+
+function formatDate(dateString) {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0"); // tháng từ 0
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`; // format dd/mm/yyyy
+}
+
+function convertDate(d) {
+  if (!d) return null;
+  const [day, month, year] = d.split("/");
+  return `${year}-${month}-${day}`;
+}
+
+
+export default function AccountInfo() {
+
+  const user = JSON.parse(localStorage.getItem("user")) || {};
+  const maTaiKhoan = user.maTaiKhoan
+  console.log(user)
+  console.log(maTaiKhoan)
+  const [editing, setEditing] = useState(false)
+  const [passwordVisible, setPasswordVisible] = useState(false)
+
+  const [form, setForm] = useState({
+    fullName: "",
+    phone: "",
+    dob: "",
+    username: "",
+    password: "",
+    createdAt: "",
+    status: ""
+  })
+
+  async function handleSave() {
+    try {
+          const bodyData = {
+            fullName: form.fullName,
+            phone: form.phone,
+            dob: convertDate(form.dob),
+            tenDangNhap: form.username,
+            password: form.password
+          };
+
+          console.log("Body gửi lên API:", bodyData);
+      const res = await fetch(`http://localhost:5000/api/infoAccount/${maTaiKhoan}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bodyData)
+      });
+
+      const result = await res.json();
+
+      if (result.status === "success") {
+        alert("Cập nhật thành công!");
+        setEditing(false);
+      } else {
+        alert("Cập nhật thất bại!");
+      }
+    } catch (err) {
+      console.error("Lỗi cập nhật:", err);
+    }
+  }
+
+  // ⭐ Gọi API khi load trang
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch(`http://localhost:5000/api/infoAccount/${maTaiKhoan}`);
+        const result = await res.json();
+
+        if (result.status === "success" && result.data) {
+          const d = result.data;
+          console.log("Dữ liệu d:", d)
+          setForm({
+            fullName: d.fullName || "",
+            phone: d.phone || "",
+            dob: formatDate(d.dob),
+            username: d.tenDangNhap || "",
+            password: d.matKhau || "", 
+            createdAt: formatDate(d.createdAt),
+            status: d.trangThai === "Active" ? "Đang hoạt động" : "Bị khóa"
+          });
+        }
+
+      } catch (err) {
+        console.error("Lỗi khi tải tài khoản:", err);
+      }
+    }
+
+    if (maTaiKhoan) fetchData();
+  }, [maTaiKhoan]);
+
+
+
+  function onChange(e) {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  }
+
+  function togglePassword() {
+    setPasswordVisible(v => !v)
+  }
+
   return (
-    <div className="account-info">
-      <p><strong>{profile.tenNguoiDung || profile.tenDangNhap}</strong></p>
-      <p>Vai trò: {profile.capDo}</p>
-      <p>Trạng thái: {profile.trangThai}</p>
+    <div className="card account-card">
+      <div className="card-header">
+        <h2>Thông tin tài khoản</h2>
+        <button className="edit-btn" onClick={() => setEditing(!editing)}>
+          {editing ? 'Hủy' : 'Chỉnh sửa'}
+        </button>
+      </div>
+
+      <div className="card-body">
+        <Field label="Họ tên:" name="fullName" value={form.fullName} onChange={onChange} editable={editing}/>
+        <Field label="Số điện thoại:" name="phone" value={form.phone} onChange={onChange} editable={editing}/>
+        <Field label="Ngày sinh:" name="dob" value={form.dob} onChange={onChange} editable={editing}/>
+        <hr />
+        <Field label="Tên đăng nhập" name="username" value={form.username} onChange={onChange} editable={editing}/>
+
+        <PasswordField
+          label="Mật khẩu"
+          name="password"
+          value={form.password}
+          onChange={onChange}
+          editable={editing}
+          visible={passwordVisible}
+          toggleVisible={togglePassword}
+        />
+
+        <Field label="Ngày tạo tài khoản:" name="createdAt" value={form.createdAt} onChange={onChange} editable={false}/>
+
+        <div className="status-row">
+          <label>Trạng thái:</label>
+          <div className="status-pill">{form.status}</div>
+        </div>
+      </div>
+
+      <div className="card-footer">
+        {editing && (
+          <button className="save-btn" onClick={handleSave}> 💾 Lưu</ button>   
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* Reusable simple Field */
+function Field({ label, name, value, onChange, editable, type='text' }) {
+  return (
+    <div className="field-row">
+      <label>{label}</label>
+      {editable ? (
+        <input className="field-input" name={name} value={value || ''} onChange={onChange} type={type} />
+      ) : (
+        <div className="field-display">{value || '—'}</div>
+      )}
+    </div>
+  )
+}
+
+
+
+function PasswordField({ label, name, value, onChange, editable, visible, toggleVisible }) {
+  return (
+    <div className="field-row">
+      <label>{label}</label>
+
+      <div className="password-wrapper">
+        {editable ? (
+          <input
+            className="field-input"
+            name={name}
+            value={value}
+            onChange={onChange}
+            type={visible ? "text" : "password"}
+            autoComplete="current-password"
+          />
+        ) : (
+          <div className="field-display">{visible ? value : "********"}</div>
+        )}
+
+        <button
+          type="button"
+          className="eye-btn"
+          onClick={toggleVisible}
+          title={visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+        >
+          {visible ? <FaEye /> : <FaEyeSlash />}
+        </button>
+      </div>
     </div>
   );
 }

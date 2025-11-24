@@ -69,19 +69,41 @@
 // }
 
 // src/components/Header.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Notification from "./Notification";
 
 export default function Header({ onLogout, onInfo }) {
   const [isHovered, setIsHovered] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const [user, setUser] = useState(null);
+  const hideTimeoutRef = useRef(null);
+  const avatarHideTimeoutRef = useRef(null);
+
+  const handleWrapperMouseLeave = () => {
+    // small delay to allow moving mouse from icon -> dropdown without closing
+    hideTimeoutRef.current = setTimeout(() => setIsNotificationOpen(false), 220);
+  };
+
+  const handleWrapperMouseEnter = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  };
+
+  const handleAvatarMouseLeave = () => {
+    avatarHideTimeoutRef.current = setTimeout(() => setIsHovered(false), 220);
+  };
+
+  const handleAvatarMouseEnter = () => {
+    if (avatarHideTimeoutRef.current) {
+      clearTimeout(avatarHideTimeoutRef.current);
+      avatarHideTimeoutRef.current = null;
+    }
+  };
 
   useEffect(() => {
     const u = JSON.parse(localStorage.getItem("user") || "null");
-    setUser(u);
-
     const loadNotifications = async () => {
       if (!u?.maTaiKhoan) return setNotifications([]);
       try {
@@ -104,6 +126,17 @@ export default function Header({ onLogout, onInfo }) {
     };
 
     loadNotifications();
+
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+      if (avatarHideTimeoutRef.current) {
+        clearTimeout(avatarHideTimeoutRef.current);
+        avatarHideTimeoutRef.current = null;
+      }
+    };
   }, []);
 
   return (
@@ -114,42 +147,64 @@ export default function Header({ onLogout, onInfo }) {
 
       <div className="header-actions">
         <div
-          className="notification-icon-container"
-          onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+          className="notification-wrapper"
+          onMouseEnter={handleWrapperMouseEnter}
+          onMouseLeave={handleWrapperMouseLeave}
         >
-          <span className="notification-badge">🔔</span>
-          {notifications.length > 0 && (
-            <span className="notification-count">{notifications.length}</span>
+          <div
+            className="notification-icon-container"
+            onClick={() => {
+              setIsNotificationOpen((s) => !s);
+              if (hideTimeoutRef.current) {
+                clearTimeout(hideTimeoutRef.current);
+                hideTimeoutRef.current = null;
+              }
+            }}
+          >
+            <span className="notification-badge">🔔</span>
+            {notifications.length > 0 && (
+              <span className="notification-count">
+                {notifications.length > 99 ? "99+" : notifications.length}
+              </span>
+            )}
+          </div>
+
+          {isNotificationOpen && (
+            <div className="notification-dropdown">
+              {notifications.length ? (
+                notifications.map((n, idx) => (
+                  <Notification key={idx} notification={n} />
+                ))
+              ) : (
+                <p>Không có thông báo mới.</p>
+              )}
+            </div>
           )}
         </div>
 
-        {isNotificationOpen && (
-          <div className="notification-dropdown">
-            {notifications.length ? (
-              notifications.map((n, idx) => (
-                <Notification key={idx} notification={n} />
-              ))
-            ) : (
-              <p>Không có thông báo mới.</p>
-            )}
-          </div>
-        )}
-
         <div
           className="avatar-container"
-          onClick={() => setIsHovered(!isHovered)}
+          onMouseEnter={handleAvatarMouseEnter}
+          onMouseLeave={handleAvatarMouseLeave}
+          onClick={() => {
+            setIsHovered(true);
+            if (avatarHideTimeoutRef.current) {
+              clearTimeout(avatarHideTimeoutRef.current);
+              avatarHideTimeoutRef.current = null;
+            }
+          }}
         >
           <div className="avatar">👤</div>
           {isHovered && (
             <div
               className="logout-popover"
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
+              onMouseEnter={handleAvatarMouseEnter}
+              onMouseLeave={handleAvatarMouseLeave}
             >
-              <div className="user-info">
+              {/* <div className="user-info">
                 <strong>{user?.tenNguoiDung || user?.tenDangNhap}</strong>
                 <div>{user?.capDo}</div>
-              </div>
+              </div> */}
               <button onClick={onInfo}>Thông tin cá nhân</button>
               <button onClick={onLogout}>Đăng Xuất</button>
             </div>
