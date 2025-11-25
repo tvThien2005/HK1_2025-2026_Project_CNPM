@@ -14,6 +14,15 @@ function HandleTime() {
   return time;
 }
 
+function takeAddress(students: any[]) {
+  
+  for (let s of students) {
+    if (s.trangThai !== "Dropped Off") {
+      return s.diaChi;
+    }
+  }
+}
+
 export function  ListStudent({ students, tripId, onChangeStatus, }: {students: any[]; tripId: number | null; onChangeStatus: (tripId: number, maHocSinh: number, trangThai: string) => Promise<void> | void; }){
   return(
     <>
@@ -60,6 +69,7 @@ export function LichTrinh(){
   useEffect(() => {
     async function fetchData() {
       try {
+        await api.post('/api/driver/trips/start-scheduled');
         const res = await api.get(`/api/driver/lichtrinh`);
         setLT(res.data);
         setTripId(res.data?.maChuyenXe ?? null);
@@ -94,9 +104,11 @@ export function LichTrinh(){
       console.error('Lỗi cập nhật trạng thái học sinh:', error);
     }
   };
+
   const daLenXe = students.filter((s) => s.trangThai === "Dropped Off").length;
   const choDon = students.length - daLenXe;
   const percent = students.length ? (daLenXe*100)/students.length : 0;
+  
   return(
     <>
       {LT?.length === 0 ? 
@@ -122,11 +134,11 @@ export function LichTrinh(){
             <div className="mx-20">
               <div className="">
                 <div className="flex flex-warp">
-                  <p>Tiến độ: </p>
-                  <p className="ml-auto">{percent}%</p>
+                  <p>Tiến độ: {percent}%</p>
+                  
                 </div>
                 <Progress value={percent} className="w-65"></Progress>
-                <p>Điểm đến tiếp theo: 98/9A, đường Lý <br />Thường Kiệt, phường Mỹ Huề, TPHCM</p>
+                <p>Điểm đến tiếp theo: {takeAddress(students)}</p>
               </div>
             </div>
             <div>

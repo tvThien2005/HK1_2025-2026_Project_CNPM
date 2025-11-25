@@ -15,4 +15,6 @@ router.post(`/postwarning`,  protect, isDriver, driverController.sendWarning);
 router.post(`/changeinfodriver`,  protect, isDriver, driverController.sendInfoDriver);
 router.get('/students/stats', protect, isDriver, driverController.getStudentStatsForActiveTrip);
 router.post('/trips/:tripId/students/:maHocSinh/status', protect, isDriver, driverController.updateStudentStatus);
+router.get('/lichtrinh', protect, isDriver, driverController.getLichTrinh);
+router.post('/trips/start-scheduled', protect, isDriver, driverController.startScheduledTrips);
 module.exports = router;

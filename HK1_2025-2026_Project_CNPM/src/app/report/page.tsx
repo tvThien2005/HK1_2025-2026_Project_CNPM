@@ -35,19 +35,23 @@ export default function report() {
 
         if (!noiDung.trim()) {
             setError("Vui lòng nhập nội dung cảnh báo");
+            alert("Vui lòng nhập nội dung cảnh báo");
             return;
         }
         try {
         setSubmitting(true);
+        
+
         await api.post("/api/driver/postwarning", {
             noiDung: noiDung.trim(),
             parentIds: [Number(selectedParentId)],
         });
         setMessage("Đã gửi cảnh báo tới phụ huynh thành công");
-        setSelectedParentId("");
+        alert("gửi cảnh báo thành công");
         } catch (e) {
             console.error(e);
             setError("Gửi cảnh báo thất bại, vui lòng thử lại");
+            alert("Gửi cảnh báo thất bại, vui lòng thử lại");
         } finally {
             setSubmitting(false);
         }

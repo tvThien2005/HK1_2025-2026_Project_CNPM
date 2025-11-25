@@ -4,51 +4,58 @@ const getStudentsByTrip = (req, res) => {
   const { tripId } = req.params;
   const driverId = req.user.maTaiXe;
 
-  const query = 'SELECT * FROM chuyenXe WHERE maChuyenXe = ? AND maTaiXe = ?';
-  db.query(query, [tripId, driverId], (err, results) => {
+  const verifyTripSql = `
+    SELECT maChuyenXe
+    FROM chuyenXe
+    WHERE maChuyenXe = ? AND maTaiXe = ?
+  `;
+
+  db.query(verifyTripSql, [tripId, driverId], (err, tripRows) => {
     if (err) {
+      console.error('Lỗi kiểm tra chuyến xe:', err);
       return res.status(500).json({ message: 'Lỗi hệ thống khi kiểm tra quyền.' });
     }
 
-    if (results.length === 0) {
+    if (tripRows.length === 0) {
       return res.status(403).json({ message: 'Bạn không có quyền xem thông tin chuyến xe này.' });
     }
 
-    const getStudentsQuery = `
-      SELECT
-        hs.maHocSinh,
-        hs.tenHocSinh,
-        hs.anhHocSinh,
-        hs.lop,
+    const studentsSql = `
+  SELECT DISTINCT
+    hs.maHocSinh,
+    hs.tenHocSinh,
+    hs.anhHocSinh,
+    hs.lop,
+    COALESCE(pbhst.trangThai, 'Assigned') AS trangThai,
+    dc.soNha,
+    dc.duong,
+    dc.phuongXa,
+    dc.quanHuyen,
+    dc.thanhPho,
+    CONCAT_WS(', ', dc.soNha, dc.duong, dc.phuongXa, dc.quanHuyen, dc.thanhPho) AS diaChi,
+    vt.kinhDo,
+    vt.viDo,
+    dd.tenDiemDung,
+    pbtx.thoiGianDuKien,
+    pbtx.maPhanBoTramXe,
+    pbtx.thuTuDon -- THÊM CỘT NÀY VÀO ĐÂY
+  FROM phanBoTramXe pbtx
+  JOIN phanBoHocSinhTram pbhst ON pbtx.maDiemDung = pbhst.maDiemDung
+  JOIN hocSinh hs ON pbhst.maHocSinh = hs.maHocSinh
+  LEFT JOIN diaChi dc ON hs.maDiaChi = dc.maDiaChi
+  LEFT JOIN viTriThuc vt ON dc.maViTriThuc = vt.maViTriThuc
+  LEFT JOIN diemDung dd ON pbtx.maDiemDung = dd.maDiemDung
+  WHERE pbtx.maChuyenXe = ?
+  ORDER BY pbtx.thuTuDon ASC, hs.tenHocSinh ASC
+`;
 
-        pbs.trangThai,
-
-        dc.soNha,
-        dc.duong,
-        dc.phuongXa,
-        dc.quanHuyen,
-        dc.thanhPho,
-
-        CONCAT_WS(', ', dc.soNha, dc.duong, dc.phuongXa, dc.quanHuyen, dc.thanhPho) AS diaChi,
-
-        vt.kinhDo,
-        vt.viDo
-
-      FROM phanBoHocSinh AS pbs
-      JOIN hocSinh AS hs ON pbs.maHocSinh = hs.maHocSinh
-      LEFT JOIN diaChi AS dc ON hs.maDiaChi = dc.maDiaChi
-      LEFT JOIN viTriThuc AS vt ON dc.maViTriThuc = vt.maViTriThuc
-      WHERE pbs.maChuyenXe = ?
-      ORDER BY hs.tenHocSinh;
-    `;
-
-    db.query(getStudentsQuery, [tripId], (err2, studentResults) => {
+    db.query(studentsSql, [tripId], (err2, rows) => {
       if (err2) {
+        console.error('Lỗi lấy danh sách học sinh:', err2);
         return res.status(500).json({ message: 'Lỗi hệ thống khi lấy danh sách học sinh.' });
       }
-      return res.status(200).json(studentResults);
+      return res.status(200).json(rows);
     });
-
   });
 };
 
@@ -68,6 +75,7 @@ const getLichTrinh = (req, res) => {
     LIMIT 1;
   `;
 
+  
   db.query(query, [state, day, driverId], (err, results) => {
     if (err) {
       console.log('Lỗi khi truy vấn lịch trình:', err);
@@ -152,26 +160,44 @@ const getTaiKhoanById = (req,res) =>{
 }
 
 const getLichTrinhTrongNgay = (req, res) => {
-  const driverId =  req.user.maTaiXe;
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  // Assuming req.user contains authenticated user's info, including their driver ID
+  const driverId =  req.user.maTaiXe; 
+  // Get the current date in YYYY-MM-DD format, adjusted for local timezone if necessary
   const day = new Date().toISOString().split('T')[0];
-  console.log(day)
 
   const query = `
-    SELECT cx.maChuyenXe, lt.maLichTrinh, td.tenTuyenDuong, lt.thoiGianDi, lt.thoiGianDen, cx.trangThai, COUNT(pbs.maHocSinh) AS soLuongHocSinh
+    SELECT 
+      cx.maChuyenXe,
+      lt.maLichTrinh,
+      td.tenTuyenDuong,
+      lt.thoiGianDi,
+      lt.thoiGianDen,
+      cx.trangThai,
+      -- Use a subquery to accurately count unique students for this specific trip
+      (
+        SELECT COUNT(DISTINCT pbhst.maHocSinh)
+        FROM phanBoTramXe pbtx
+        JOIN phanBoHocSinhTram pbhst ON pbtx.maDiemDung = pbhst.maDiemDung
+        WHERE pbtx.maChuyenXe = cx.maChuyenXe
+          
+          -- Ensure student's assignment is active for the trip's date
+          AND (pbhst.thoiGianBatDau IS NULL OR pbhst.thoiGianBatDau <= lt.ngay)
+          AND (pbhst.thoiGianKetThuc IS NULL OR pbhst.thoiGianKetThuc >= lt.ngay)
+      ) AS soLuongHocSinh
     FROM chuyenXe cx
     JOIN lichTrinh lt ON cx.maLichTrinh = lt.maLichTrinh
     JOIN tuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-    LEFT JOIN phanBoHocSinh pbs ON pbs.maChuyenXe = cx.maChuyenXe
-    WHERE lt.ngay = ? AND cx.maTaiXe = ?
-    GROUP BY cx.maChuyenXe, lt.maLichTrinh, td.tenTuyenDuong, lt.thoiGianDi, lt.thoiGianDen, cx.trangThai
-    ORDER BY lt.thoiGianDi ASC;
+    WHERE 
+      lt.ngay = ? AND cx.maTaiXe = ?
+    GROUP BY 
+      cx.maChuyenXe, lt.maLichTrinh, td.tenTuyenDuong, lt.thoiGianDi, lt.thoiGianDen, cx.trangThai
+    ORDER BY 
+      lt.thoiGianDi ASC;
   `;
 
   db.query(query, [day, driverId], (err, results) => {
     if (err) {
-      console.log('Lỗi khi truy vấn danh sách lịch trình:', err);
+      console.error('Lỗi khi truy vấn danh sách lịch trình:', err);
       return res.status(500).json({ error: 'Lỗi server khi truy vấn lịch trình trong ngày' });
     }
     return res.status(200).json({ ngay: day, lichTrinh: results });
@@ -358,16 +384,17 @@ const getStudentStatsForActiveTrip = (req, res) => {
 
     const maChuyenXe = tripResults[0].maChuyenXe;
 
-    // Thống kê theo trạng thái trong bảng phanBoHocSinh
+    // Thống kê theo trạng thái dựa trên bảng phân bổ học sinh - trạm
     const statsQuery = `
       SELECT 
         COUNT(*) AS total,
-        SUM(CASE WHEN trangThai = 'Picked Up' THEN 1 ELSE 0 END) AS pickedUp,
-        SUM(CASE WHEN trangThai = 'Dropped Off' THEN 1 ELSE 0 END) AS droppedOff,
-        SUM(CASE WHEN trangThai = 'Assigned' THEN 1 ELSE 0 END) AS assigned,
-        SUM(CASE WHEN trangThai NOT IN ('Picked Up','Dropped Off','Assigned') THEN 1 ELSE 0 END) AS other
-      FROM phanBoHocSinh
-      WHERE maChuyenXe = ?;
+        SUM(CASE WHEN pbhst.trangThai = 'Picked Up' THEN 1 ELSE 0 END) AS pickedUp,
+        SUM(CASE WHEN pbhst.trangThai = 'Dropped Off' THEN 1 ELSE 0 END) AS droppedOff,
+        SUM(CASE WHEN pbhst.trangThai IN ('Assigned','Active') THEN 1 ELSE 0 END) AS assigned,
+        SUM(CASE WHEN pbhst.trangThai NOT IN ('Picked Up','Dropped Off','Assigned','Active') THEN 1 ELSE 0 END) AS other
+      FROM phanBoTramXe pbtx
+      JOIN phanBoHocSinhTram pbhst ON pbtx.maDiemDung = pbhst.maDiemDung
+      WHERE pbtx.maChuyenXe = ?;
     `;
 
     db.query(statsQuery, [maChuyenXe], (err2, statsResults) => {
@@ -418,11 +445,12 @@ const updateStudentStatus = (req, res) => {
         return res.status(403).json({ message: 'Bạn không có quyền cập nhật chuyến xe này' });
       }
 
-      // Cập nhật trạng thái học sinh trong chuyến xe
+      // Cập nhật trạng thái học sinh trong chuyến xe theo schema mới
       const updateStudentQuery = `
-        UPDATE phanBoHocSinh
-        SET trangThai = ?
-        WHERE maChuyenXe = ? AND maHocSinh = ?;
+        UPDATE phanBoHocSinhTram pbhst
+        JOIN phanBoTramXe pbtx ON pbtx.maDiemDung = pbhst.maDiemDung
+        SET pbhst.trangThai = ?
+        WHERE pbtx.maChuyenXe = ? AND pbhst.maHocSinh = ?;
       `;
 
       db.query(updateStudentQuery, [trangThai, tripId, maHocSinh], (updErr, updResult) => {
@@ -434,13 +462,14 @@ const updateStudentStatus = (req, res) => {
           return res.status(404).json({ message: 'Không tìm thấy phân bổ học sinh cho chuyến xe' });
         }
 
-        // Kiểm tra tất cả học sinh đã "Dropped Off" chưa
+        // Kiểm tra tất cả học sinh đã "Dropped Off" chưa theo schema mới
         const checkAllDroppedQuery = `
           SELECT 
-            SUM(CASE WHEN pbhs.trangThai = 'Dropped Off' THEN 1 ELSE 0 END) AS doneStudent,
+            SUM(CASE WHEN pbhst.trangThai = 'Dropped Off' THEN 1 ELSE 0 END) AS doneStudent,
             COUNT(*) AS total
-          FROM phanBoHocSinh pbhs
-          WHERE pbhs.maChuyenXe = ?;
+          FROM phanBoTramXe pbtx
+          JOIN phanBoHocSinhTram pbhst ON pbtx.maDiemDung = pbhst.maDiemDung
+          WHERE pbtx.maChuyenXe = ?;
         `;
 
         db.query(checkAllDroppedQuery, [tripId], (chkErr, chkRows) => {
@@ -488,7 +517,31 @@ const updateStudentStatus = (req, res) => {
   }
 }
 
+const startScheduledTrips = (req, res) => {
+  const driverId = req.user.maTaiXe;
+  const day = new Date().toISOString().split('T')[0];
 
+  const query = `
+    UPDATE chuyenXe cx
+    JOIN lichTrinh lt ON cx.maLichTrinh = lt.maLichTrinh
+    SET cx.trangThai = 'InProgress'
+    WHERE cx.trangThai = 'Scheduled'
+      AND lt.ngay = ?
+      AND cx.maTaiXe = ?;
+  `;
+
+  db.query(query, [day, driverId], (err, result) => {
+    if (err) {
+      console.error('Lỗi khi cập nhật trạng thái chuyến xe:', err);
+      return res.status(500).json({ message: 'Lỗi server khi cập nhật trạng thái chuyến xe' });
+    }
+
+    return res.status(200).json({
+      message: 'Đã cập nhật các chuyến xe Scheduled sang InProgress',
+      affectedRows: result.affectedRows
+    });
+  });
+};
 
 module.exports = {
   getStudentsByTrip,
@@ -503,6 +556,7 @@ module.exports = {
   sendInfoDriver,
   getStudentStatsForActiveTrip,
   updateStudentStatus,
+  startScheduledTrips,
 };
 
 
