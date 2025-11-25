@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body>
+      <body suppressHydrationWarning={true}>
         <LayoutWrapper>{children}</LayoutWrapper>
       </body>
     </html>

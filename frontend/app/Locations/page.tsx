@@ -52,7 +52,7 @@ const fetchDataFromDBWithStations = async () => {
   }
 };
 
-// ✅ Hàm convert dữ liệu DB sang Bus objects
+// Hàm convert dữ liệu DB sang Bus objects
 const convertDBDataToBusWithStations = (dbData: any): Bus[] => {
   if (!dbData) {
     console.warn("⚠️ No data to convert");
@@ -66,7 +66,7 @@ const convertDBDataToBusWithStations = (dbData: any): Bus[] => {
     lichtrinh = [],
     tuyenduong = [],
     diemdung = [],
-    phanbotramxe = [],
+    chitiettuyenduong = [],
     phanbohocsinhtram = [],
     vitrithuc = [],
     vitrichuyenxe = [],
@@ -75,21 +75,21 @@ const convertDBDataToBusWithStations = (dbData: any): Bus[] => {
   console.log("🔍 Converting DB data to buses:");
   console.log(`  - Chuyến xe: ${chuyenxe.length}`);
   console.log(`  - Điểm dừng: ${diemdung.length}`);
-  console.log(`  - Phân bổ trạm xe: ${phanbotramxe.length}`);
+  console.log(`  - Phân bổ trạm xe: ${chitiettuyenduong.length}`);
   console.log(`  - Phân bổ học sinh trạm: ${phanbohocsinhtram.length}`);
 
   // ✅ DEBUG: Log sample data để debug
   console.log("📊 SAMPLE DATA FOR DEBUGGING:");
   console.log("   - Sample chuyenxe:", chuyenxe.slice(0, 2));
-  console.log("   - Sample phanbotramxe:", phanbotramxe.slice(0, 5));
+  console.log("   - Sample chitiettuyenduong:", chitiettuyenduong.slice(0, 5));
   console.log("   - Sample diemdung:", diemdung.slice(0, 3));
   console.log("   - Sample phanbohocsinhtram:", phanbohocsinhtram.slice(0, 5));
 
   // ✅ DEBUG: Kiểm tra cấu trúc dữ liệu
   console.log("🔍 DATA STRUCTURE CHECK:");
   console.log(
-    "   - phanbotramxe keys:",
-    phanbotramxe.length > 0 ? Object.keys(phanbotramxe[0]) : "No data"
+    "   - chitiettuyenduong keys:",
+    chitiettuyenduong.length > 0 ? Object.keys(chitiettuyenduong[0]) : "No data"
   );
   console.log(
     "   - diemdung keys:",
@@ -101,7 +101,7 @@ const convertDBDataToBusWithStations = (dbData: any): Bus[] => {
   );
 
   // ✅ LOG ĐỂ DEBUG
-  console.log("📊 Sample phanbotramxe:", phanbotramxe.slice(0, 5));
+  console.log("📊 Sample chitiettuyenduong:", chitiettuyenduong.slice(0, 5));
 
   return chuyenxe.map((chuyen: any) => {
     const xe = xebuyt.find((x: any) => x.maXeBuyt === chuyen.maXeBuyt);
@@ -113,12 +113,46 @@ const convertDBDataToBusWithStations = (dbData: any): Bus[] => {
       (t: any) => t.maTuyenDuong === chuyen.maTuyenDuong
     );
 
-    // ✅ FIX: So sánh cả số và chuỗi
-    const tramCuaChuyenXe = phanbotramxe.filter(
+    // ✅ FIX: Lọc trạm theo tuyến đường và loại bỏ duplicate
+    const tramCuaChuyenXe = chitiettuyenduong.filter(
       (pb: any) =>
-        pb.maChuyenXe === chuyen.maChuyenXe ||
-        pb.maChuyenXe === String(chuyen.maChuyenXe) ||
-        String(pb.maChuyenXe) === String(chuyen.maChuyenXe)
+        pb.maTuyenDuong === chuyen.maTuyenDuong ||
+        pb.maTuyenDuong === String(chuyen.maTuyenDuong) ||
+        String(pb.maTuyenDuong) === String(chuyen.maTuyenDuong)
+    );
+
+    // ✅ Loại bỏ duplicate trạm một cách thông minh hơn
+    const uniqueTramMap = new Map();
+    tramCuaChuyenXe.forEach((tram: any) => {
+      // ✅ Tạo key duy nhất dựa trên điểm dừng và tuyến đường
+      const key = `${tram.maDiemDung}`;
+
+      // ✅ Chỉ giữ lại record đầu tiên hoặc record có thuTu hợp lệ nhất
+      if (!uniqueTramMap.has(key)) {
+        uniqueTramMap.set(key, tram);
+      } else {
+        // ✅ Ưu tiên record có thuTu/thuTuDon hợp lệ
+        const existing = uniqueTramMap.get(key);
+        const existingThuTu = existing.thuTu || existing.thuTuDon;
+        const currentThuTu = tram.thuTu || tram.thuTuDon;
+
+        if (currentThuTu && !existingThuTu) {
+          uniqueTramMap.set(key, tram);
+        } else if (
+          currentThuTu &&
+          existingThuTu &&
+          currentThuTu < existingThuTu
+        ) {
+          uniqueTramMap.set(key, tram);
+        }
+      }
+    });
+
+    const uniqueTramCuaChuyenXe = Array.from(uniqueTramMap.values());
+
+    // ✅ DEBUG: Log để kiểm tra deduplication
+    console.log(
+      `   - Duplicate check: ${tramCuaChuyenXe.length} raw → ${uniqueTramCuaChuyenXe.length} unique`
     );
 
     console.log(`🚌 Chuyến xe ${chuyen.maChuyenXe} (${xe?.bienSoXe}):`);
@@ -127,19 +161,31 @@ const convertDBDataToBusWithStations = (dbData: any): Bus[] => {
         chuyen.maChuyenXe
       }`
     );
-    console.log(`   - Tìm thấy ${tramCuaChuyenXe.length} trạm`);
+    console.log(
+      `   - Tìm thấy ${tramCuaChuyenXe.length} trạm (raw), ${uniqueTramCuaChuyenXe.length} trạm (unique)`
+    );
 
-    // ✅ LOG CHI TIẾT
-    if (tramCuaChuyenXe.length > 0) {
+    // ✅ LOG CHI TIẾT - Debug tuyến đường vs chuyến xe
+    console.log(
+      `   - maTuyenDuong của chuyến xe: ${
+        chuyen.maTuyenDuong
+      } (type: ${typeof chuyen.maTuyenDuong})`
+    );
+
+    if (uniqueTramCuaChuyenXe.length > 0) {
       console.log(
-        `   - Chi tiết trạm:`,
-        tramCuaChuyenXe.map((t: any) => ({
-          maPhanBo: t.maPhanBoTramXe,
+        `   - Chi tiết trạm (sau dedup):`,
+        uniqueTramCuaChuyenXe.map((t: any) => ({
+          maChiTietTuyenDuong: t.maChiTietTuyenDuong,
           maDiemDung: t.maDiemDung,
-          thuTu: t.thuTuDon,
-          maChuyenXeType: typeof t.maChuyenXe,
+          thuTu: t.thuTu || t.thuTuDon,
+          maTuyenDuong: t.maTuyenDuong,
+          tenDiemDung: t.tenDiemDung,
         }))
       );
+
+      // ✅ DEBUG: Kiểm tra raw data
+      console.log(`   - Raw data trước dedup:`, tramCuaChuyenXe.slice(0, 10));
 
       // ✅ DEBUG: Log raw data để kiểm tra
       console.log(
@@ -156,10 +202,12 @@ const convertDBDataToBusWithStations = (dbData: any): Bus[] => {
       );
     }
 
-    // ✅ Sắp xếp theo thứ tự đón
-    const sortedTram = tramCuaChuyenXe.sort((a: any, b: any) => {
-      const thuTuA = parseInt(a.thuTuDon) || 0;
-      const thuTuB = parseInt(b.thuTuDon) || 0;
+    // ✅ Sắp xếp theo thứ tự đón với xử lý null/undefined
+    const sortedTram = uniqueTramCuaChuyenXe.sort((a: any, b: any) => {
+      const thuTuA =
+        a.thuTu || a.thuTuDon ? parseInt(a.thuTu || a.thuTuDon) : 999;
+      const thuTuB =
+        b.thuTu || b.thuTuDon ? parseInt(b.thuTu || b.thuTuDon) : 999;
       return thuTuA - thuTuB;
     });
 
@@ -237,27 +285,37 @@ const convertDBDataToBusWithStations = (dbData: any): Bus[] => {
         `🎒 RESULT: Found ${hocSinhTaiTram.length} students at station ${pb.maDiemDung}`
       );
 
+      // ✅ FIX: Sử dụng trường đúng từ database
+      const thuTuValue = pb.thuTu || pb.thuTuDon || index + 1;
+
       console.log(
-        `   📍 Trạm ${pb.thuTuDon}: ${tram?.tenDiemDung || "Unknown"}`
+        `   📍 Trạm ${thuTuValue}: ${tram?.tenDiemDung || "Unknown"}`
       );
       console.log(
         `      - ID điểm dừng: ${pb.maDiemDung} (type: ${typeof pb.maDiemDung})`
       );
       console.log(`      - Học sinh: ${hocSinhTaiTram.length} em`);
       console.log(`      - Tọa độ: ${tram?.viDo}, ${tram?.kinhDo}`);
+      console.log(
+        `      - thuTu from DB: ${pb.thuTu}, thuTuDon from DB: ${pb.thuTuDon}`
+      );
+
+      // ✅ FIX: Đảm bảo thuTu không undefined và tạo unique key
+      const uniqueStationId = `station-${chuyen.maChuyenXe}-${pb.maDiemDung}-${thuTuValue}-${index}`;
+
       console.log(`      - 🔍 STATION CREATED:`, {
-        id: `station-${chuyen.maChuyenXe}-${pb.maDiemDung}-${pb.thuTuDon}`,
+        id: uniqueStationId,
         name: tram?.tenDiemDung || `Trạm ${index + 1}`,
         position: {
           lat: parseFloat(tram?.viDo) || 10.762622,
           lng: parseFloat(tram?.kinhDo) || 106.660172,
         },
         originalDiemDungId: pb.maDiemDung,
-        thuTu: pb.thuTuDon,
+        thuTu: thuTuValue,
       });
 
       return {
-        id: `station-${chuyen.maChuyenXe}-${pb.maDiemDung}-${pb.thuTuDon}`,
+        id: uniqueStationId,
         name: tram?.tenDiemDung || `Trạm ${index + 1}`,
         position: {
           lat: parseFloat(tram?.viDo) || 10.762622,
@@ -270,9 +328,9 @@ const convertDBDataToBusWithStations = (dbData: any): Bus[] => {
           : undefined,
         type: "pickup",
         originalDiemDungId: pb.maDiemDung,
-        phanBoTramId: pb.maPhanBoTramXe,
+        phanBoTramId: pb.machitiettuyenduong,
         chuyenXeId: chuyen.maChuyenXe,
-        thuTu: pb.thuTuDon,
+        thuTu: thuTuValue,
       };
     });
 
@@ -349,6 +407,7 @@ const convertDBDataToBusWithStations = (dbData: any): Bus[] => {
 };
 
 const VehiclesPage: React.FC = () => {
+  const [isMounted, setIsMounted] = useState(false);
   const [buses, setBuses] = useState<Bus[]>([]);
   const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
   const [isRealTime, setIsRealTime] = useState(false);
@@ -356,6 +415,7 @@ const VehiclesPage: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+  const [osrmApiAvailable, setOsrmApiAvailable] = useState(true);
 
   // ✅ State để lưu cached routes cho mỗi xe bus
   const [busRouteCache, setBusRouteCache] = useState<{
@@ -364,54 +424,83 @@ const VehiclesPage: React.FC = () => {
 
   const stopTimersRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
-  // ✅ Hàm xử lý khi đón tại trạm
+  // ✅ SHARED MODE: Function để cập nhật trạng thái tất cả xe khi có trạm mới được đón
+  const updateAllBusesForSharedStation = useCallback((stationId: string) => {
+    setBuses((prevBuses) =>
+      prevBuses.map((bus) => {
+        // ✅ Kiểm tra xe này có trạm được đón không
+        const hasThisStation = bus.route.stations.some(
+          (station) => station.id === stationId
+        );
+
+        if (hasThisStation && !bus.pickedUpStations?.includes(stationId)) {
+          // ✅ Thêm trạm vào danh sách đã đón
+          const updatedPickedUpStations = [
+            ...(bus.pickedUpStations || []),
+            stationId,
+          ];
+
+          console.log(
+            `🔄 SHARED: Auto-updating ${bus.name} for station ${stationId}`
+          );
+
+          return {
+            ...bus,
+            pickedUpStations: updatedPickedUpStations,
+          };
+        }
+
+        return bus; // Xe không có trạm này hoặc đã có rồi thì không thay đổi
+      })
+    );
+  }, []);
+
+  // Đảm bảo component đã mount để tránh hydration error
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // ✅ Helper function để test OSRM API availability
+  const testOsrmApiAvailability = useCallback(async () => {
+    try {
+      const testResponse = await fetch(
+        "https://router.project-osrm.org/route/v1/driving/106.640172,10.782622;106.645172,10.787622?overview=false",
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          signal: AbortSignal.timeout(3000), // Short timeout for test
+        }
+      );
+
+      if (testResponse.ok) {
+        setOsrmApiAvailable(true);
+        console.log("✅ OSRM API is available");
+        return true;
+      } else {
+        setOsrmApiAvailable(false);
+        console.warn("⚠️ OSRM API is not responding properly");
+        return false;
+      }
+    } catch (error) {
+      setOsrmApiAvailable(false);
+      console.warn("⚠️ OSRM API is not available:", error);
+      return false;
+    }
+  }, []);
+
+  // ✅ Hàm xử lý khi đón tại trạm - SHARED STATION MODE
   const handleStationPickup = useCallback(
     (stationId: string) => {
-      console.log(`🎒 Marking station ${stationId} as picked up`);
-
-      // ✅ DEBUG: Log thêm thông tin về station được đón
-      const currentBus = buses.find((b) => b.id === selectedBus?.id);
-      if (currentBus) {
-        const station = currentBus.route.stations.find(
-          (s) => s.id === stationId
-        );
-        console.log(`🎒 PICKUP DEBUG:`, {
-          stationId,
-          stationName: station?.name,
-          stationPosition: station?.position,
-          originalDiemDungId: (station as any)?.originalDiemDungId,
-          thuTu: (station as any)?.thuTu,
-          currentStationIndex: currentBus.currentStationIndex,
-        });
-      }
-
-      if (!selectedBus) return;
-
-      setBuses((prevBuses) =>
-        prevBuses.map((bus) => {
-          if (bus.id === selectedBus.id) {
-            const updatedPickedUpStations = bus.pickedUpStations?.includes(
-              stationId
-            )
-              ? bus.pickedUpStations
-              : [...(bus.pickedUpStations || []), stationId];
-
-            const updatedBus = {
-              ...bus,
-              pickedUpStations: updatedPickedUpStations,
-            };
-
-            if (selectedBus.id === bus.id) {
-              setSelectedBus(updatedBus);
-            }
-
-            return updatedBus;
-          }
-          return bus;
-        })
+      console.log(
+        `🎒 SHARED MODE: Station ${stationId} picked up - updating ALL buses that have this station`
       );
+
+      // ✅ Cập nhật tất cả xe có trạm này
+      updateAllBusesForSharedStation(stationId);
     },
-    [selectedBus]
+    [updateAllBusesForSharedStation]
   );
 
   // ✅ Function để pre-fetch routes cho tất cả xe bus
@@ -429,7 +518,14 @@ const VehiclesPage: React.FC = () => {
       if (bus.route.stations.length === 0) {
         try {
           const routeResponse = await fetch(
-            `https://router.project-osrm.org/route/v1/driving/${currentPos[1]},${currentPos[0]};${bus.route.school.position.lng},${bus.route.school.position.lat}?overview=full&geometries=geojson`
+            `https://router.project-osrm.org/route/v1/driving/${currentPos[1]},${currentPos[0]};${bus.route.school.position.lng},${bus.route.school.position.lat}?overview=full&geometries=geojson`,
+            {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+              },
+              signal: AbortSignal.timeout(10000), // Longer timeout for preload
+            }
           );
 
           if (routeResponse.ok) {
@@ -443,7 +539,8 @@ const VehiclesPage: React.FC = () => {
           }
         } catch (error) {
           console.warn(
-            `⚠️ Could not load route for bus ${bus.id} directly to school`
+            `⚠️ Could not load route for bus ${bus.id} directly to school:`,
+            error
           );
         }
       }
@@ -452,7 +549,14 @@ const VehiclesPage: React.FC = () => {
         const firstStation = bus.route.stations[0];
         try {
           const routeResponse = await fetch(
-            `https://router.project-osrm.org/route/v1/driving/${currentPos[1]},${currentPos[0]};${firstStation.position.lng},${firstStation.position.lat}?overview=full&geometries=geojson`
+            `https://router.project-osrm.org/route/v1/driving/${currentPos[1]},${currentPos[0]};${firstStation.position.lng},${firstStation.position.lat}?overview=full&geometries=geojson`,
+            {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+              },
+              signal: AbortSignal.timeout(10000),
+            }
           );
 
           if (routeResponse.ok) {
@@ -468,7 +572,8 @@ const VehiclesPage: React.FC = () => {
           }
         } catch (error) {
           console.warn(
-            `⚠️ Could not load route for bus ${bus.id} to first station`
+            `⚠️ Could not load route for bus ${bus.id} to first station:`,
+            error
           );
         }
 
@@ -479,7 +584,14 @@ const VehiclesPage: React.FC = () => {
 
           try {
             const routeResponse = await fetch(
-              `https://router.project-osrm.org/route/v1/driving/${currentStation.position.lng},${currentStation.position.lat};${nextStation.position.lng},${nextStation.position.lat}?overview=full&geometries=geojson`
+              `https://router.project-osrm.org/route/v1/driving/${currentStation.position.lng},${currentStation.position.lat};${nextStation.position.lng},${nextStation.position.lat}?overview=full&geometries=geojson`,
+              {
+                method: "GET",
+                headers: {
+                  Accept: "application/json",
+                },
+                signal: AbortSignal.timeout(10000),
+              }
             );
 
             if (routeResponse.ok) {
@@ -496,7 +608,8 @@ const VehiclesPage: React.FC = () => {
             }
           } catch (error) {
             console.warn(
-              `⚠️ Could not load route between stations for bus ${bus.id}`
+              `⚠️ Could not load route between stations for bus ${bus.id}:`,
+              error
             );
           }
         }
@@ -505,7 +618,14 @@ const VehiclesPage: React.FC = () => {
         const lastStation = bus.route.stations[bus.route.stations.length - 1];
         try {
           const routeResponse = await fetch(
-            `https://router.project-osrm.org/route/v1/driving/${lastStation.position.lng},${lastStation.position.lat};${bus.route.school.position.lng},${bus.route.school.position.lat}?overview=full&geometries=geojson`
+            `https://router.project-osrm.org/route/v1/driving/${lastStation.position.lng},${lastStation.position.lat};${bus.route.school.position.lng},${bus.route.school.position.lat}?overview=full&geometries=geojson`,
+            {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+              },
+              signal: AbortSignal.timeout(10000),
+            }
           );
 
           if (routeResponse.ok) {
@@ -520,7 +640,10 @@ const VehiclesPage: React.FC = () => {
             }
           }
         } catch (error) {
-          console.warn(`⚠️ Could not load route to school for bus ${bus.id}`);
+          console.warn(
+            `⚠️ Could not load route to school for bus ${bus.id}:`,
+            error
+          );
         }
       }
     }
@@ -534,9 +657,14 @@ const VehiclesPage: React.FC = () => {
 
   // ✅ Fetch data khi component mount và pre-load routes
   useEffect(() => {
+    if (!isMounted) return;
+
     const loadData = async () => {
       setIsLoading(true);
       try {
+        // ✅ Test OSRM API availability first
+        await testOsrmApiAvailability();
+
         const dbData = await fetchDataFromDBWithStations();
         if (dbData) {
           const busData = convertDBDataToBusWithStations(dbData);
@@ -544,8 +672,14 @@ const VehiclesPage: React.FC = () => {
           if (busData.length > 0) {
             setSelectedBus(busData[0]);
             calculateRouteSegments(busData[0]);
-            // Pre-load tất cả routes
-            await preloadBusRoutes(busData);
+            // Pre-load tất cả routes nếu API available
+            if (osrmApiAvailable) {
+              await preloadBusRoutes(busData);
+            } else {
+              console.log(
+                "📍 Using straight-line routes due to OSRM API unavailability"
+              );
+            }
           }
         }
       } catch (error) {
@@ -556,7 +690,7 @@ const VehiclesPage: React.FC = () => {
     };
 
     loadData();
-  }, [preloadBusRoutes]);
+  }, [isMounted, preloadBusRoutes, testOsrmApiAvailability, osrmApiAvailable]);
 
   // ✅ Tính toán route segments với routing API
   const calculateRouteSegments = useCallback(async (bus: Bus) => {
@@ -573,27 +707,44 @@ const VehiclesPage: React.FC = () => {
 
       // Nếu xe không có trạm, hiển thị route đến trường
       if (stations.length === 0) {
-        const routeResponse = await fetch(
-          `https://router.project-osrm.org/route/v1/driving/${bus.position.lng},${bus.position.lat};${bus.route.school.position.lng},${bus.route.school.position.lat}?overview=full&geometries=geojson`
-        );
+        try {
+          const routeResponse = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/${bus.position.lng},${bus.position.lat};${bus.route.school.position.lng},${bus.route.school.position.lat}?overview=full&geometries=geojson`,
+            {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+              },
+              signal: AbortSignal.timeout(5000),
+            }
+          );
 
-        if (routeResponse.ok) {
-          const routeData = await routeResponse.json();
-          if (routeData.routes && routeData.routes.length > 0) {
-            const coordinates = routeData.routes[0].geometry.coordinates;
-            const routePositions = coordinates.map(
-              (coord: [number, number]) =>
-                [coord[1], coord[0]] as [number, number]
-            );
+          if (routeResponse.ok) {
+            const routeData = await routeResponse.json();
+            if (routeData.routes && routeData.routes.length > 0) {
+              const coordinates = routeData.routes[0].geometry.coordinates;
+              const routePositions = coordinates.map(
+                (coord: [number, number]) =>
+                  [coord[1], coord[0]] as [number, number]
+              );
 
-            segments.push({
-              positions: routePositions,
-              color: "#0D6EFD",
-              weight: 4,
-              opacity: 0.9,
-            });
+              segments.push({
+                positions: routePositions,
+                color: "#0D6EFD",
+                weight: 4,
+                opacity: 0.9,
+              });
+            } else {
+              throw new Error("No routes found");
+            }
+          } else {
+            throw new Error(`HTTP ${routeResponse.status}`);
           }
-        } else {
+        } catch (error) {
+          console.warn(
+            "⚠️ OSRM API failed for school route, using straight line:",
+            error
+          );
           // Fallback to straight line if API fails
           const routeToSchool = [
             [bus.position.lat, bus.position.lng],
@@ -612,28 +763,44 @@ const VehiclesPage: React.FC = () => {
       else if (currentIndex < stations.length) {
         const nextStation = stations[currentIndex];
 
-        // Sử dụng OSRM API để lấy đường đi thực tế
-        const routeResponse = await fetch(
-          `https://router.project-osrm.org/route/v1/driving/${bus.position.lng},${bus.position.lat};${nextStation.position.lng},${nextStation.position.lat}?overview=full&geometries=geojson`
-        );
+        // ✅ Sử dụng OSRM API với error handling
+        try {
+          const routeResponse = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/${bus.position.lng},${bus.position.lat};${nextStation.position.lng},${nextStation.position.lat}?overview=full&geometries=geojson`,
+            {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+              },
+              signal: AbortSignal.timeout(5000), // 5 second timeout
+            }
+          );
 
-        if (routeResponse.ok) {
-          const routeData = await routeResponse.json();
-          if (routeData.routes && routeData.routes.length > 0) {
-            const coordinates = routeData.routes[0].geometry.coordinates;
-            const routePositions = coordinates.map(
-              (coord: [number, number]) =>
-                [coord[1], coord[0]] as [number, number]
+          if (routeResponse.ok) {
+            const routeData = await routeResponse.json();
+            if (routeData.routes && routeData.routes.length > 0) {
+              const coordinates = routeData.routes[0].geometry.coordinates;
+              const routePositions = coordinates.map(
+                (coord: [number, number]) =>
+                  [coord[1], coord[0]] as [number, number]
+              );
+
+              segments.push({
+                positions: routePositions,
+                color: "#DC2626",
+                weight: 4,
+                opacity: 0.9,
+              });
+            } else {
+              throw new Error("No routes found in response");
+            }
+          } else {
+            throw new Error(
+              `HTTP ${routeResponse.status}: ${routeResponse.statusText}`
             );
-
-            segments.push({
-              positions: routePositions,
-              color: "#DC2626",
-              weight: 4,
-              opacity: 0.9,
-            });
           }
-        } else {
+        } catch (error) {
+          console.warn("⚠️ OSRM API failed, using straight line:", error);
           // Fallback to straight line if API fails
           const routeToNextStation = [
             [bus.position.lat, bus.position.lng],
@@ -650,27 +817,44 @@ const VehiclesPage: React.FC = () => {
       }
       // Xe đã hoàn thành tất cả trạm, hiển thị route đến trường
       else {
-        const routeResponse = await fetch(
-          `https://router.project-osrm.org/route/v1/driving/${bus.position.lng},${bus.position.lat};${bus.route.school.position.lng},${bus.route.school.position.lat}?overview=full&geometries=geojson`
-        );
+        try {
+          const routeResponse = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/${bus.position.lng},${bus.position.lat};${bus.route.school.position.lng},${bus.route.school.position.lat}?overview=full&geometries=geojson`,
+            {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+              },
+              signal: AbortSignal.timeout(5000),
+            }
+          );
 
-        if (routeResponse.ok) {
-          const routeData = await routeResponse.json();
-          if (routeData.routes && routeData.routes.length > 0) {
-            const coordinates = routeData.routes[0].geometry.coordinates;
-            const routePositions = coordinates.map(
-              (coord: [number, number]) =>
-                [coord[1], coord[0]] as [number, number]
-            );
+          if (routeResponse.ok) {
+            const routeData = await routeResponse.json();
+            if (routeData.routes && routeData.routes.length > 0) {
+              const coordinates = routeData.routes[0].geometry.coordinates;
+              const routePositions = coordinates.map(
+                (coord: [number, number]) =>
+                  [coord[1], coord[0]] as [number, number]
+              );
 
-            segments.push({
-              positions: routePositions,
-              color: "#0D6EFD",
-              weight: 4,
-              opacity: 0.9,
-            });
+              segments.push({
+                positions: routePositions,
+                color: "#0D6EFD",
+                weight: 4,
+                opacity: 0.9,
+              });
+            } else {
+              throw new Error("No routes found");
+            }
+          } else {
+            throw new Error(`HTTP ${routeResponse.status}`);
           }
-        } else {
+        } catch (error) {
+          console.warn(
+            "⚠️ OSRM API failed for final school route, using straight line:",
+            error
+          );
           // Fallback to straight line if API fails
           const routeToSchool = [
             [bus.position.lat, bus.position.lng],
@@ -1040,6 +1224,50 @@ const VehiclesPage: React.FC = () => {
 
             // Kiểm tra đã đến trạm
             if (nextIndex >= cachedRoute.length - 1) {
+              // ✅ SHARED MODE: Kiểm tra xem trạm này đã được đón bởi bất kì xe nào chưa
+              const isAlreadyPickedUp =
+                bus.pickedUpStations?.includes(currentStation.id) || false;
+
+              console.log(`🔍 SHARED DEBUG PICKUP CHECK cho ${bus.name}:`, {
+                currentStationId: currentStation.id,
+                currentStationName: currentStation.name,
+                busPickedUpStations: bus.pickedUpStations,
+                isAlreadyPickedUp,
+                currentStationIndex: bus.currentStationIndex,
+                totalStations: bus.route.stations.length,
+              });
+
+              if (isAlreadyPickedUp) {
+                console.log(
+                  `⚠️ SHARED MODE: Station ${currentStation.name} (${currentStation.id}) already picked up globally, ${bus.name} skipping...`
+                );
+                // ✅ Bỏ qua trạm này và chuyển sang trạm tiếp theo
+                setBuses((prev) =>
+                  prev.map((b) => {
+                    if (b.id === bus.id) {
+                      const nextIndex = b.currentStationIndex + 1;
+                      const newStatus =
+                        nextIndex >= b.route.stations.length
+                          ? "going_to_school"
+                          : "picking_up";
+
+                      console.log(
+                        `🔄 SHARED: ${b.name} skipping to station ${nextIndex}/${b.route.stations.length}`
+                      );
+
+                      return {
+                        ...b,
+                        currentStationIndex: nextIndex,
+                        route: { ...b.route, currentStatus: newStatus },
+                      };
+                    }
+                    return b;
+                  })
+                );
+
+                return bus; // Return early
+              }
+
               // ✅ Random thời gian dừng từ 5-10 giây
               const pickupTime =
                 Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000;
@@ -1112,6 +1340,53 @@ const VehiclesPage: React.FC = () => {
 
             // Đã đến trạm
             if (distanceToStation <= 0.001) {
+              // ✅ SHARED MODE: Kiểm tra xem trạm này đã được đón bởi bất kì xe nào chưa (fallback case)
+              const isAlreadyPickedUp =
+                bus.pickedUpStations?.includes(currentStation.id) || false;
+
+              console.log(
+                `🔍 SHARED DEBUG PICKUP CHECK (fallback) cho ${bus.name}:`,
+                {
+                  currentStationId: currentStation.id,
+                  currentStationName: currentStation.name,
+                  busPickedUpStations: bus.pickedUpStations,
+                  isAlreadyPickedUp,
+                  currentStationIndex: bus.currentStationIndex,
+                  totalStations: bus.route.stations.length,
+                }
+              );
+
+              if (isAlreadyPickedUp) {
+                console.log(
+                  `⚠️ SHARED MODE: Station ${currentStation.name} (${currentStation.id}) already picked up globally, ${bus.name} skipping (fallback)...`
+                );
+                // ✅ Bỏ qua trạm này và chuyển sang trạm tiếp theo
+                setBuses((prev) =>
+                  prev.map((b) => {
+                    if (b.id === bus.id) {
+                      const nextIndex = b.currentStationIndex + 1;
+                      const newStatus =
+                        nextIndex >= b.route.stations.length
+                          ? "going_to_school"
+                          : "picking_up";
+
+                      console.log(
+                        `🔄 SHARED (fallback): ${b.name} skipping to station ${nextIndex}/${b.route.stations.length}`
+                      );
+
+                      return {
+                        ...b,
+                        currentStationIndex: nextIndex,
+                        route: { ...b.route, currentStatus: newStatus },
+                      };
+                    }
+                    return b;
+                  })
+                );
+
+                return bus; // Return early
+              }
+
               // ✅ Random thời gian dừng từ 5-10 giây
               const pickupTime =
                 Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000;
@@ -1195,7 +1470,7 @@ const VehiclesPage: React.FC = () => {
     };
   }, [isRealTime, buses.length, handleStationPickup]);
 
-  // ✅ Update selectedBus
+  // ✅ Update selectedBus - SHARED MODE
   useEffect(() => {
     if (!selectedBus) return;
 
@@ -1203,8 +1478,13 @@ const VehiclesPage: React.FC = () => {
     if (
       updatedBus &&
       (updatedBus.currentStationIndex !== selectedBus.currentStationIndex ||
-        updatedBus.position.lat !== selectedBus.position.lat)
+        updatedBus.position.lat !== selectedBus.position.lat ||
+        JSON.stringify(updatedBus.pickedUpStations) !==
+          JSON.stringify(selectedBus.pickedUpStations))
     ) {
+      console.log(
+        `🔄 SHARED: Updating selectedBus ${selectedBus.name} with new state`
+      );
       setSelectedBus(updatedBus);
     }
   }, [buses, selectedBus]);
@@ -1212,8 +1492,16 @@ const VehiclesPage: React.FC = () => {
   // ✅ Helper functions
   const getProgressPercentage = (bus: Bus) => {
     const totalStations = bus.route.stations.length;
-    const completedStations = bus.pickedUpStations?.length || 0;
-    return totalStations > 0 ? (completedStations / totalStations) * 100 : 0;
+    // ✅ Đếm unique stations đã được picked up
+    const uniquePickedUpStations = new Set(bus.pickedUpStations || []).size;
+    return totalStations > 0
+      ? (uniquePickedUpStations / totalStations) * 100
+      : 0;
+  };
+
+  // ✅ Helper để đếm unique picked up stations
+  const getUniquePickedUpCount = (bus: Bus) => {
+    return new Set(bus.pickedUpStations || []).size;
   };
 
   const isStationPickedUp = (bus: Bus, stationId: string): boolean => {
@@ -1373,6 +1661,11 @@ const VehiclesPage: React.FC = () => {
     );
   }
 
+  // Chỉ render sau khi component đã mount để tránh hydration error
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <>
       <Head>
@@ -1393,6 +1686,9 @@ const VehiclesPage: React.FC = () => {
                   🗺️ Routes loaded: {Object.keys(busRouteCache).length} xe
                 </Badge>
               )}
+              <Badge bg={osrmApiAvailable ? "success" : "warning"}>
+                {osrmApiAvailable ? "🌐 OSRM API OK" : "📍 Straight Lines"}
+              </Badge>
               <Button
                 variant={isRealTime ? "outline-danger" : "outline-success"}
                 size="sm"
@@ -1459,7 +1755,7 @@ const VehiclesPage: React.FC = () => {
                   </div>
                   <small className="text-muted mt-1 d-block">
                     Tiến trình: {Math.round(getProgressPercentage(selectedBus))}
-                    % (Đã đến: {selectedBus.pickedUpStations?.length || 0}/
+                    % (Đã đến: {getUniquePickedUpCount(selectedBus)}/
                     {selectedBus.route.stations.length} trạm)
                   </small>
                 </Card.Body>
@@ -1578,7 +1874,7 @@ const VehiclesPage: React.FC = () => {
                               </small>
                               <br />
                               <small className="text-success">
-                                ✅ Đã đến: {bus.pickedUpStations?.length || 0}/
+                                ✅ Đã đến: {getUniquePickedUpCount(bus)}/
                                 {bus.route.stations.length} trạm
                               </small>
                               {getCurrentStationInfo(bus) && (
@@ -1587,7 +1883,7 @@ const VehiclesPage: React.FC = () => {
                                   <small className="text-warning">
                                     🚏 Hiện tại:{" "}
                                     {getCurrentStationInfo(bus)?.name}
-                                    {bus.speed === 0 && " (đang đón 5-10s)"}
+                                    {bus.speed === 0 && ""}
                                   </small>
                                 </>
                               )}

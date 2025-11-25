@@ -15,11 +15,19 @@ export default function LayoutWrapper({
   const pathname = usePathname();
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   // Thêm /sign-up vào danh sách trang auth
   const isAuthPage = pathname === "/sign-in" || pathname === "/sign-up";
 
+  // Đảm bảo component đã mount để tránh hydration error
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     const checkAuth = () => {
       const isLoggedIn = localStorage.getItem("isLoggedIn");
 
@@ -31,9 +39,10 @@ export default function LayoutWrapper({
     };
 
     checkAuth();
-  }, [pathname, router, isAuthPage]);
+  }, [pathname, router, isAuthPage, isMounted]);
 
-  if (isChecking && !isAuthPage) {
+  // Show loading nếu chưa mount hoặc đang checking auth (không phải trang auth)
+  if (!isMounted || (isChecking && !isAuthPage)) {
     return (
       <div className="d-flex justify-content-center align-items-center min-vh-100">
         <Spinner animation="border" role="status" variant="primary">

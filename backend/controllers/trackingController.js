@@ -1,15 +1,15 @@
 const trackingService = require("../services/trackingService");
 
-// Lấy tất cả dữ liệu cho bản đồ
-exports.getAllBusData = async (req, res) => {
-  try {
-    const data = await trackingService.getAllBusData();
-    res.json({ success: true, data });
-  } catch (error) {
-    console.error("❌ Lỗi getAllBusData:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
+// // Lấy tất cả dữ liệu cho bản đồ
+// exports.getAllBusData = async (req, res) => {
+//   try {
+//     const data = await trackingService.getAllBusData();
+//     res.json({ success: true, data });
+//   } catch (error) {
+//     console.error("❌ Lỗi getAllBusData:", error);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// };
 
 // Các API riêng lẻ
 exports.getHocSinh = async (req, res) => {
@@ -93,31 +93,31 @@ exports.getPhanBoHocSinh = async (req, res) => {
   }
 };
 
-// Cập nhật vị trí xe real-time
-exports.updateBusPosition = async (req, res) => {
-  try {
-    const { busId, lat, lng, speed } = req.body;
-    const result = await trackingService.updateBusPosition(
-      busId,
-      lat,
-      lng,
-      speed
-    );
-    res.json({ success: true, data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
+// // Cập nhật vị trí xe real-time
+// exports.updateBusPosition = async (req, res) => {
+//   try {
+//     const { busId, lat, lng, speed } = req.body;
+//     const result = await trackingService.updateBusPosition(
+//       busId,
+//       lat,
+//       lng,
+//       speed
+//     );
+//     res.json({ success: true, data: result });
+//   } catch (error) {
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// };
 
-// Lấy vị trí hiện tại của tất cả xe
-exports.getCurrentPositions = async (req, res) => {
-  try {
-    const positions = await trackingService.getCurrentPositions();
-    res.json({ success: true, data: positions });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
+// // Lấy vị trí hiện tại của tất cả xe
+// exports.getCurrentPositions = async (req, res) => {
+//   try {
+//     const positions = await trackingService.getCurrentPositions();
+//     res.json({ success: true, data: positions });
+//   } catch (error) {
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// };
 
 // trackingController.js - Thêm các API mới
 
@@ -151,9 +151,9 @@ exports.getPhanBoHocSinhTram = async (req, res) => {
   }
 };
 
-exports.getPhanBoTramXe = async (req, res) => {
+exports.getChiTietTuyenDuong = async (req, res) => {
   try {
-    const phanBo = await trackingService.getPhanBoTramXe();
+    const phanBo = await trackingService.getChiTietTuyenDuong();
     res.json({ success: true, data: phanBo });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
