@@ -38,6 +38,7 @@ app.use("/api/assignDrivers", require("./routes/assignDriverRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/drivers", require("./routes/driverRoutes"));
 app.use("/api/buses", require("./routes/busRoutes"));
+app.use("/api/scheduled", require("./routes/scheduledRoutes"));
 app.use("/api/upload", require("./routes/uploadRoutes"));
 
 // Route mặc định để test

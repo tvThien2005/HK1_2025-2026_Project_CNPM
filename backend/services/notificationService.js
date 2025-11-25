@@ -204,7 +204,37 @@ const deleteNotification = (id, callback) => {
     }
   );
 };
-
+// Lấy chi tiết thông báo kèm danh sách người nhận và tên người nhận
+const getNotificationDetails = (maThongBao, callback) => {
+  const sql = `
+   SELECT
+     tb.maThongBao,
+     tb.noiDung,
+     tb.thoiGianTao,
+     ql.tenQuanLyXe,
+     ct.maTaiKhoan,
+     tk.tenDangNhap,
+     t.tenTaiXe,
+     p.tenPhuHuynh,
+  COALESCE(t.tenTaiXe, p.tenPhuHuynh, tk.tenDangNhap) AS tenNguoiNhan
+   FROM thongBao tb
+   JOIN chiTietThongBao ct ON ct.maThongBao = tb.maThongBao
+    JOIN taiKhoan tk ON tk.maTaiKhoan = ct.maTaiKhoan
+   LEFT JOIN taiXe t ON t.maTaiKhoan = tk.maTaiKhoan
+   LEFT JOIN phuHuynh p ON p.maTaiKhoan = tk.maTaiKhoan
+   LEFT JOIN quanLyXe ql ON ql.maQuanLyXe = tb.maQuanLyXe
+   WHERE tb.maThongBao = ?
+    ORDER BY ct.maTaiKhoan
+  `;
+  db.query(sql, [maThongBao], (err, results) => {
+    if (err) {
+      console.error("❌ Lỗi truy vấn chi tiết thông báo:", err);
+      return callback(err);
+    }
+    // Trả về kết quả (mảng các recipient kèm thông tin thông báo lặp lại)
+    callback(null, results);
+  });
+};
 module.exports = {
   getAllNotificationsDriver,
   getAllNotificationsParent,
@@ -212,4 +242,5 @@ module.exports = {
   deleteNotification,
   getAllDriver,
   getAllParent,
+  getNotificationDetails,
 };

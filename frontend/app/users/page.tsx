@@ -16,7 +16,6 @@ import {
 } from "react-bootstrap";
 import { FaEdit, FaTrash, FaLock, FaUnlock } from "react-icons/fa";
 import axios from "axios";
-import { LuRadius } from "react-icons/lu";
 
 interface User {
   maTaiKhoan: number;
@@ -28,8 +27,14 @@ interface User {
   tinhTrang: number;
 }
 
+interface Student {
+  maHocSinh: number;
+  tenHocSinh: string;
+}
+
 const UsersPage = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -38,13 +43,15 @@ const UsersPage = () => {
   const [alert, setAlert] = useState({ show: false, message: "", type: "" });
   const itemsPerPage = 10;
 
-  // Form state - CHỈ các trường cần thiết
+  // Form state - CẬP NHẬT: thêm trường selectedStudent
   const [formData, setFormData] = useState({
     tenDangNhap: "",
     matKhau: "",
-    capDo: "Manager",
+    capDo: "",
     hoTen: "",
+    selectedStudent: "", // Thêm trường chọn học sinh
   });
+
   const [formData1, setFormData1] = useState({
     tenDangNhap: "",
     matKhau: "",
@@ -62,8 +69,19 @@ const UsersPage = () => {
     }
   };
 
+  // Lấy danh sách học sinh
+  const fetchStudents = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/students"); // API lấy danh sách học sinh
+      setStudents(res.data);
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách học sinh:", error);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchStudents(); // Gọi API lấy học sinh khi component mount
   }, []);
 
   const handleInputChange = (e: any) => {
@@ -100,6 +118,7 @@ const UsersPage = () => {
       matKhau: "",
       capDo: "Manager",
       hoTen: "",
+      selectedStudent: "",
     });
     setShowAddModal(true);
   };
@@ -147,8 +166,15 @@ const UsersPage = () => {
       return false;
     }
 
+    // Validation cho Parent: phải chọn học sinh
+    if (formData.capDo === "Parent" && !formData.selectedStudent) {
+      showAlert("Vui lòng chọn học sinh cho tài khoản phụ huynh", "warning");
+      return false;
+    }
+
     return true;
   };
+
   const validateFormEdit = () => {
     if (!formData1.tenDangNhap.trim()) {
       showAlert("Vui lòng nhập số điện thoại", "warning");
@@ -176,7 +202,7 @@ const UsersPage = () => {
     return true;
   };
 
-  // Thêm tài khoản
+  // Thêm tài khoản - CẬP NHẬT: gửi thêm selectedStudent
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -185,12 +211,14 @@ const UsersPage = () => {
     try {
       const response = await axios.post("http://localhost:5000/api/users", {
         ...formData,
-        trangThai: "Hoạt động", // Trạng thái mặc định
+        trangThai: "Active", // Trạng thái mặc định
       });
+
       if (response.data.exists) {
         showAlert("Tên đăng nhập đã tồn tại!", "danger");
         return;
       }
+
       fetchUsers();
       handleCloseModal();
       showAlert("Thêm tài khoản thành công", "success");
@@ -465,7 +493,7 @@ const UsersPage = () => {
           </div>
         )}
 
-        {/* Modal Thêm tài khoản */}
+        {/* Modal Thêm tài khoản - ĐÃ SỬA */}
         <Modal
           show={showAddModal}
           onHide={handleCloseModal}
@@ -536,17 +564,43 @@ const UsersPage = () => {
                 />
               </Form.Group>
 
-              <Form.Group className="mb-4">
+              {/* CẬP NHẬT: Combobox cấp độ với Manager và Parent */}
+              <Form.Group className="mb-3">
                 <Form.Label className="small fw-semibold">Cấp độ *</Form.Label>
-                <Form.Control
+                <Form.Select
                   size="sm"
-                  type="text"
-                  value="Quản lý"
-                  disabled
-                  readOnly
-                  className="fw-bold text-center"
-                />
+                  name="capDo"
+                  value={formData.capDo}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="Manager">Quản lý</option>
+                  <option value="Parent">Phụ huynh</option>
+                </Form.Select>
               </Form.Group>
+
+              {/* CẬP NHẬT: Hiển thị combobox chọn học sinh khi chọn Parent */}
+              {formData.capDo === "Parent" && (
+                <Form.Group className="mb-4">
+                  <Form.Label className="small fw-semibold">
+                    Chọn học sinh *
+                  </Form.Label>
+                  <Form.Select
+                    size="sm"
+                    name="selectedStudent"
+                    value={formData.selectedStudent}
+                    onChange={handleInputChange}
+                    required={formData.capDo === "Parent"}
+                  >
+                    <option value="">-- Chọn học sinh --</option>
+                    {students.map((student) => (
+                      <option key={student.maHocSinh} value={student.maHocSinh}>
+                        {student.tenHocSinh}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              )}
 
               <div className="d-flex justify-content-end gap-2">
                 <Button variant="light" size="sm" onClick={handleCloseModal}>

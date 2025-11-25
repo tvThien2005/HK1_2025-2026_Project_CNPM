@@ -975,9 +975,9 @@ const RoutesPage = () => {
           centered
         >
           <Modal.Header closeButton>
-            <Modal.Title>
+            <Modal.Title className="text-center w-100">
               <FaMapMarkedAlt className="me-2" />
-              Bản đồ tuyến đường: {selectedRoute?.tenTuyenDuong}
+              <h3>Bản đồ tuyến đường: {selectedRoute?.tenTuyenDuong}</h3>
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
@@ -1177,7 +1177,9 @@ const RoutesPage = () => {
           centered
         >
           <Modal.Header closeButton>
-            <Modal.Title>Thêm tuyến đường mới</Modal.Title>
+            <Modal.Title className="text-center w-100">
+              <h3>Thêm tuyến đường mới</h3>
+            </Modal.Title>
           </Modal.Header>
           <Form onSubmit={handleAdd}>
             <Modal.Body>
@@ -1290,7 +1292,10 @@ const RoutesPage = () => {
         >
           <Modal.Header closeButton>
             <Modal.Title>
-              Thêm trạm vào tuyến {selectedRoute?.tenTuyenDuong}
+              <h3 className="text-center mb-4 fw-semibold">
+                Thêm trạm vào tuyến {selectedRoute?.tenTuyenDuong}
+              </h3>
+              {/* Thêm trạm vào tuyến {selectedRoute?.tenTuyenDuong} */}
             </Modal.Title>
           </Modal.Header>
           <Form onSubmit={handleAddStation}>
@@ -1382,9 +1387,8 @@ const RoutesPage = () => {
           size="lg"
         >
           <Modal.Header closeButton>
-            <Modal.Title>
-              <FaMapMarkerAlt className="me-2" />
-              Thêm trạm mới
+            <Modal.Title className="text-center w-100">
+              <h3>Thêm trạm mới</h3>
             </Modal.Title>
           </Modal.Header>
           <Form onSubmit={handleCreateStation}>

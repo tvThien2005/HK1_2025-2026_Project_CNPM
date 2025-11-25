@@ -138,11 +138,35 @@ const createNotification = (req, res) => {
   });
 };
 
+const getNotificationDetails = (req, res) => {
+  const id = req.params.id;
+  console.log("🔎 Controller - Lấy chi tiết thông báo ID:", id);
+
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ success: false, error: "ID không hợp lệ" });
+  }
+
+  notificationService.getNotificationDetails(id, (err, results) => {
+    if (err) {
+      console.error("❌ Lỗi lấy chi tiết thông báo:", err);
+      return res.status(500).json({
+        success: false,
+        error: "Lỗi server",
+        errorDetail: err.sqlMessage,
+      });
+    }
+
+    // Kết quả là mảng các bản ghi recipient kèm thông tin thông báo
+    res.json({ success: true, data: results });
+  });
+};
+
 module.exports = {
   getNotificationDriver,
   getNotificationParent,
+  getNotificationDetails,
   removeNotification,
   createNotification,
   getAllDrivers,
-  getAllParents
+  getAllParents,
 };
