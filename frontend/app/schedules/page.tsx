@@ -28,7 +28,7 @@ interface Schedule {
 const ScheduledPage = () => {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 7;
 
   // Filter states
   const [dateFrom, setDateFrom] = useState("");

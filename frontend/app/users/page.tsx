@@ -429,29 +429,50 @@ const UsersPage = () => {
                       >
                         <FaTrash size={20} />
                       </Button>
-                      {user.block === 1 ? (
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          className="mb-1"
-                          style={{ border: "none" }}
-                          onClick={() => handleBlock(user.maTaiKhoan)}
-                          title="Khóa"
-                        >
-                          <FaLock size={20} />
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline-success"
-                          size="sm"
-                          className="mb-1"
-                          style={{ border: "none" }}
-                          onClick={() => handleUnblock(user.maTaiKhoan)}
-                          title="Mở khóa"
-                        >
-                          <FaUnlock size={20} />
-                        </Button>
-                      )}
+                      {
+                        // Determine blocked state robustly: prefer `tinhTrang` (0 = blocked),
+                        // fall back to `block` column if present (1 = blocked in some places).
+                        (() => {
+                          const tinhTrangVal = (user as any).tinhTrang;
+                          const blockVal = (user as any).block;
+                          const isBlocked =
+                            typeof tinhTrangVal !== "undefined"
+                              ? Number(tinhTrangVal) === 0
+                              : typeof blockVal !== "undefined"
+                              ? Number(blockVal) === 1
+                              : false;
+
+                          if (isBlocked) {
+                            // currently blocked -> show Unblock action
+                            return (
+                              <Button
+                                variant="outline-success"
+                                size="sm"
+                                className="mb-1"
+                                style={{ border: "none" }}
+                                onClick={() => handleUnblock(user.maTaiKhoan)}
+                                title="Mở khóa"
+                              >
+                                <FaUnlock size={20} />
+                              </Button>
+                            );
+                          }
+
+                          // currently not blocked -> show Block action
+                          return (
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              className="mb-1"
+                              style={{ border: "none" }}
+                              onClick={() => handleBlock(user.maTaiKhoan)}
+                              title="Khóa"
+                            >
+                              <FaLock size={20} />
+                            </Button>
+                          );
+                        })()
+                      }
                     </td>
                   </tr>
                 ))

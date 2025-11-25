@@ -126,31 +126,6 @@ const AssignPage = () => {
     }
   };
 
-  // Hàm cập nhật trạng thái
-  const handleStatusUpdate = async () => {
-    if (!selectedStatusAssign || !newStatus) {
-      showAlert("Vui lòng chọn trạng thái mới", "warning");
-      return;
-    }
-    try {
-      await axios.put(
-        `http://localhost:5000/api/assignDrivers/${selectedStatusAssign.maChuyenXe}/status`,
-        { trangThai: newStatus }
-      );
-      showAlert("Cập nhật trạng thái thành công", "success");
-      setShowStatusModal(false);
-      setSelectedStatusAssign(null);
-      setNewStatus("");
-      fetchAssigns();
-    } catch (err: any) {
-      console.error("Lỗi cập nhật trạng thái:", err);
-      showAlert(
-        err?.response?.data?.error || "Lỗi khi cập nhật trạng thái",
-        "danger"
-      );
-    }
-  };
-
   // Fetch functions
   const fetchAssigns = async () => {
     try {
@@ -245,18 +220,23 @@ const AssignPage = () => {
     }
 
     if (dateFrom) {
-      const assignDate = new Date(a.ngay);
-      const fromDate = new Date(dateFrom);
-      if (assignDate < fromDate) {
+      // Parse dates without timezone conversion
+      const assignDateStr =
+        typeof a.ngay === "string"
+          ? a.ngay.split("T")[0]
+          : new Date(a.ngay).toISOString().split("T")[0];
+      if (assignDateStr < dateFrom) {
         return false;
       }
     }
 
     if (dateTo) {
-      const assignDate = new Date(a.ngay);
-      const toDate = new Date(dateTo);
-      toDate.setHours(23, 59, 59, 999);
-      if (assignDate > toDate) {
+      // Parse dates without timezone conversion
+      const assignDateStr =
+        typeof a.ngay === "string"
+          ? a.ngay.split("T")[0]
+          : new Date(a.ngay).toISOString().split("T")[0];
+      if (assignDateStr > dateTo) {
         return false;
       }
     }
@@ -274,36 +254,69 @@ const AssignPage = () => {
   const currentAssigns = filtered.slice(startIndex, startIndex + itemsPerPage);
   const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
 
-  // Format schedule display
-  const formatScheduleOption = (s: Schedule) =>
-    `${new Date(s.ngay).toISOString().split("T")[0]} | ${s.thoiGianDi} → ${
-      s.thoiGianDen
-    }`;
+  // Format schedule display - parse date without timezone conversion
+  const formatScheduleOption = (s: Schedule) => {
+    // Xử lý múi giờ đúng cách
+    let dateStr: string;
+
+    if (typeof s.ngay === "string") {
+      // Nếu ngày đã ở dạng YYYY-MM-DD (không có timezone)
+      if (s.ngay.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        dateStr = s.ngay;
+      } else {
+        // Nếu có chứa timezone, parse và điều chỉnh
+        const date = new Date(s.ngay);
+        // Thêm offset để hiển thị đúng ngày
+        date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+        dateStr = date.toISOString().split("T")[0];
+      }
+    } else {
+      // Nếu là Date object
+      const date = new Date(s.ngay);
+      date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+      dateStr = date.toISOString().split("T")[0];
+    }
+
+    return `${dateStr} | ${s.thoiGianDi} → ${s.thoiGianDen}`;
+  };
 
   // Fallback mapping
   const mapAssignToIds = (a: Assign) => {
-    const out = {
+    // Hàm điều chỉnh ngày
+    const adjustDate = (dateString: string) => {
+      if (
+        typeof dateString === "string" &&
+        dateString.match(/^\d{4}-\d{2}-\d{2}$/)
+      ) {
+        return dateString;
+      }
+      const date = new Date(dateString);
+      return new Date(date.getTime() + date.getTimezoneOffset() * 60000)
+        .toISOString()
+        .split("T")[0];
+    };
+
+    const assignDate = adjustDate(a.ngay);
+
+    const maLichTrinh = schedules.find((s) => {
+      const scheduleDate = adjustDate(s.ngay);
+      return (
+        scheduleDate === assignDate &&
+        s.thoiGianDi === a.thoiGianDi &&
+        s.thoiGianDen === a.thoiGianDen
+      );
+    })?.maLichTrinh;
+
+    return {
       maTaiXe:
         a.maTaiXe ?? drivers.find((d) => d.tenTaiXe === a.tenTaiXe)?.maTaiXe,
       maXeBuyt:
         a.maXeBuyt ?? buses.find((b) => b.bienSoXe === a.bienSoXe)?.maXeBuyt,
-      maLichTrinh:
-        a.maLichTrinh ??
-        schedules.find(
-          (s) =>
-            new Date(s.ngay).toISOString().split("T")[0] ===
-              new Date(a.ngay).toISOString().split("T")[0] &&
-            s.thoiGianDi === a.thoiGianDi &&
-            s.thoiGianDen === a.thoiGianDen
-        )?.maLichTrinh,
+      maLichTrinh,
       maTuyenDuong:
         a.maTuyenDuong ??
         routes.find((r) => r.tenTuyenDuong === a.tenTuyenDuong)?.maTuyenDuong,
-      // maPhanCong:
-      //   a.maChuyenXe ??
-      //   assigns.find((as) => as.trangThai === a.trangThai)?.maChuyenXe,
     };
-    return out;
   };
 
   // Open Add modal
@@ -320,7 +333,6 @@ const AssignPage = () => {
   // Add
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (
       !formAdd.maTaiXe ||
       !formAdd.maXeBuyt ||
@@ -423,10 +435,25 @@ const AssignPage = () => {
     setCurrentPage(1);
   };
 
-  // Format date
+  // Format date - parse date string (YYYY-MM-DD) directly without timezone conversion
   const formatDate = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleDateString("vi-VN");
+      // Nếu đã là định dạng YYYY-MM-DD
+      if (
+        typeof dateString === "string" &&
+        dateString.match(/^\d{4}-\d{2}-\d{2}$/)
+      ) {
+        const [year, month, day] = dateString.split("-");
+        return `${day}/${month}/${year}`;
+      }
+
+      // Xử lý các định dạng khác
+      const date = new Date(dateString);
+      // Điều chỉnh múi giờ
+      const adjustedDate = new Date(
+        date.getTime() + date.getTimezoneOffset() * 60000
+      );
+      return adjustedDate.toLocaleDateString("vi-VN");
     } catch {
       return dateString;
     }

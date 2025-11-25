@@ -30,7 +30,7 @@ const getAllAssignDrivers = (callback) => {
 
 const getAllSchedules = (callback) => {
   db.query(
-    "SELECT maLichTrinh, ngay, thoiGianDi, thoiGianDen FROM lichTrinh WHERE ngay >= CURDATE()",
+    "SELECT * FROM lichTrinh  WHERE ngay >= CURDATE()",
     (err, results) => {
       if (err) {
         console.error("❌ Lỗi truy vấn SQL:", err);

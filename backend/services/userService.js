@@ -26,7 +26,10 @@ const checkUsernameExists = (username, callback) => {
     "SELECT COUNT(*) AS count FROM taiKhoan WHERE tenDangNhap = ?",
     [username],
     (err, results) => {
-      if (err) return callback(null, false);
+      if (err) {
+        console.error("❌ Lỗi khi kiểm tra username tồn tại:", err);
+        return callback(err);
+      }
       callback(null, results[0].count > 0);
     }
   );
@@ -37,6 +40,11 @@ const addUser = (user, callback) => {
 
   // 1️⃣ Kiểm tra username trước khi thêm
   checkUsernameExists(tenDangNhap, (err, exists) => {
+    if (err) {
+      console.error("❌ Lỗi khi kiểm tra username trước khi thêm:", err);
+      return callback(err);
+    }
+
     if (exists) {
       return callback(null, { exists: true });
     }
@@ -51,11 +59,11 @@ const addUser = (user, callback) => {
       String(now.getDate()).padStart(2, "0");
 
     const trangThai = "Active";
-    const block = "1";
+    const tinhTrang = "1";
 
     db.query(
-      "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai, block) VALUES (?, ?, ?, ?, ?, ?)",
-      [tenDangNhap, matKhau, ngayTao, capDo, trangThai, block],
+      "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai, tinhTrang) VALUES (?, ?, ?, ?, ?, ?)",
+      [tenDangNhap, matKhau, ngayTao, capDo, trangThai, tinhTrang],
       (err, results) => {
         if (err) return callback(err);
 
