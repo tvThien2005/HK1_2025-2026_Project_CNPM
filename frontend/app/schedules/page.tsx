@@ -699,30 +699,49 @@ const ScheduledPage = () => {
           show={showEditModal}
           onHide={() => setShowEditModal(false)}
           centered
+          backdrop="static"
+          dialogClassName="w-auto"
+          contentClassName="no-frame"
         >
-          <Modal.Header closeButton>
-            <Modal.Title>Sửa lịch trình</Modal.Title>
-          </Modal.Header>
           <Form onSubmit={handleEdit}>
-            <Modal.Body>
+            <div
+              className="p-4 rounded-3 bg-white shadow-sm position-relative"
+              style={{ width: 500 }}
+            >
+              <button
+                type="button"
+                className="btn-close position-absolute"
+                style={{ top: 20, right: 20 }}
+                onClick={() => setShowEditModal(false)}
+                aria-label="Close"
+              ></button>
+              <h5 className="text-center mb-4 fw-semibold fs-5">
+                Sửa lịch trình
+              </h5>
+
               <Form.Group className="mb-3">
-                <Form.Label>Ngày *</Form.Label>
+                <Form.Label className="small fw-semibold">Ngày *</Form.Label>
                 <Form.Control
                   type="date"
+                  size="sm"
                   value={formEdit.ngay}
                   onChange={(e) =>
                     setFormEdit((p) => ({ ...p, ngay: e.target.value }))
                   }
                   required
+                  className="py-2"
                 />
               </Form.Group>
 
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Thời gian đi *</Form.Label>
+                    <Form.Label className="small fw-semibold">
+                      Thời gian đi *
+                    </Form.Label>
                     <Form.Control
                       type="time"
+                      size="sm"
                       value={formEdit.thoiGianDi}
                       onChange={(e) => {
                         console.log("🕒 Edit Time Di changed:", e.target.value);
@@ -734,8 +753,11 @@ const ScheduledPage = () => {
                       }}
                       required
                       step="3600"
+                      className="py-2"
                     />
-                    <Form.Text className="text-muted">Định dạng 24h</Form.Text>
+                    <Form.Text className="text-muted small">
+                      Định dạng 24h
+                    </Form.Text>
                     <div className="mt-1">
                       <small className="text-info">
                         Giá trị:{" "}
@@ -746,9 +768,12 @@ const ScheduledPage = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Thời gian đến *</Form.Label>
+                    <Form.Label className="small fw-semibold">
+                      Thời gian đến *
+                    </Form.Label>
                     <Form.Control
                       type="time"
+                      size="sm"
                       value={formEdit.thoiGianDen}
                       onChange={(e) => {
                         console.log(
@@ -763,8 +788,11 @@ const ScheduledPage = () => {
                       }}
                       required
                       step="3600"
+                      className="py-2"
                     />
-                    <Form.Text className="text-muted">Định dạng 24h</Form.Text>
+                    <Form.Text className="text-muted small">
+                      Định dạng 24h
+                    </Form.Text>
                     <div className="mt-1">
                       <small className="text-info">
                         Giá trị:{" "}
@@ -782,49 +810,74 @@ const ScheduledPage = () => {
                       ? "danger"
                       : "success"
                   }
-                  className="py-2"
+                  className="py-2 small mb-4"
                 >
-                  <small>
-                    {formEdit.thoiGianDi >= formEdit.thoiGianDen
-                      ? "⚠️ Thời gian đi phải sớm hơn thời gian đến"
-                      : `✅ Khoảng thời gian: ${formEdit.thoiGianDi} → ${formEdit.thoiGianDen}`}
-                    <br />
-                    📤 Sẽ gửi đến server: {formEdit.thoiGianDi}:00 →{" "}
-                    {formEdit.thoiGianDen}:00
-                  </small>
+                  {formEdit.thoiGianDi >= formEdit.thoiGianDen
+                    ? "⚠️ Thời gian đi phải sớm hơn thời gian đến"
+                    : `✅ Khoảng thời gian: ${formEdit.thoiGianDi} → ${formEdit.thoiGianDen}`}
+                  <br />
+                  📤 Sẽ gửi đến server: {formEdit.thoiGianDi}:00 →{" "}
+                  {formEdit.thoiGianDen}:00
                 </Alert>
               )}
 
               {selectedSchedule && (
-                <div className="bg-light p-3 rounded">
-                  <small className="text-muted">
-                    <strong>Thông tin hệ thống:</strong>
-                    <br />
-                    Mã lịch trình: {selectedSchedule.maLichTrinh}
-                    <br />
-                    Dữ liệu gốc:
-                    {formatDate(selectedSchedule.ngay)}
-                    {formatTimeForDisplay(selectedSchedule.thoiGianDi)} →{" "}
-                    {formatTimeForDisplay(selectedSchedule.thoiGianDen)}
-                  </small>
+                <div className="border-start border-3 border-info bg-light bg-opacity-10 p-3 rounded mb-4">
+                  <h6 className="text-info mb-3 fw-semibold small">
+                    <i className="fas fa-history me-2"></i>
+                    THÔNG TIN HỆ THỐNG
+                  </h6>
+                  <div className="row small text-muted">
+                    <div className="col-md-6 mb-2">
+                      <span className="fw-medium">Mã lịch trình:</span>
+                      <br />
+                      <code className="text-dark">
+                        {selectedSchedule.maLichTrinh}
+                      </code>
+                    </div>
+                    <div className="col-md-6 mb-2">
+                      <span className="fw-medium">Ngày gốc:</span>
+                      <br />
+                      {formatDate(selectedSchedule.ngay)}
+                    </div>
+                    <div className="col-12 mb-2">
+                      <span className="fw-medium">Giờ gốc:</span>
+                      <br />
+                      <span className="badge bg-secondary">
+                        {formatTimeForDisplay(selectedSchedule.thoiGianDi)} →{" "}
+                        {formatTimeForDisplay(selectedSchedule.thoiGianDen)}
+                      </span>
+                    </div>
+                    <div className="col-12 mt-2 pt-2 border-top">
+                      <small>
+                        <i className="fas fa-database me-1"></i>
+                        Dữ liệu tham khảo từ hệ thống
+                      </small>
+                    </div>
+                  </div>
                 </div>
               )}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button
-                variant="secondary"
-                onClick={() => setShowEditModal(false)}
-              >
-                Hủy
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={formEdit.thoiGianDi >= formEdit.thoiGianDen}
-              >
-                Cập nhật
-              </Button>
-            </Modal.Footer>
+
+              <div className="d-flex justify-content-end gap-2">
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-3 py-2"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  className="px-3 py-2"
+                  disabled={formEdit.thoiGianDi >= formEdit.thoiGianDen}
+                >
+                  Cập nhật
+                </Button>
+              </div>
+            </div>
           </Form>
         </Modal>
       </Container>

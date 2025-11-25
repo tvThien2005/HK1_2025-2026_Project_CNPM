@@ -369,63 +369,95 @@ const BusesPage = () => {
         )}
 
         {/* Modal Thêm xe */}
-        <Modal show={showAddModal} onHide={handleCloseModal} size="lg">
-          <Modal.Header closeButton>
-            <Modal.Title>Thêm xe buýt mới</Modal.Title>
-          </Modal.Header>
+        <Modal
+          show={showAddModal}
+          onHide={handleCloseModal}
+          centered
+          backdrop="static"
+          dialogClassName="w-auto"
+          contentClassName="no-frame"
+        >
           <Form onSubmit={handleAdd}>
-            <Modal.Body>
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Biển số *</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="bienSoXe"
-                      value={formData.bienSoXe}
-                      onChange={handleInputChange}
-                      placeholder="Nhập biển số"
-                      required
-                    />
-                  </Form.Group>
+            <div
+              className="p-4 rounded-3 bg-white shadow-sm position-relative"
+              style={{ width: 500 }}
+            >
+              <button
+                type="button"
+                className="btn-close position-absolute"
+                style={{ top: 20, right: 20 }}
+                onClick={handleCloseModal}
+                aria-label="Close"
+              ></button>
+              <h5 className="text-center mb-4 fw-semibold fs-5">
+                Thêm xe buýt mới
+              </h5>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Sức chứa *</Form.Label>
-                    <Form.Control
-                      type="number"
-                      name="sucChua"
-                      value={formData.sucChua}
-                      onChange={handleInputChange}
-                      placeholder="Số lượng chỗ ngồi"
-                      required
-                    />
-                  </Form.Group>
+              <Form.Group className="mb-4">
+                <Form.Label className="small fw-semibold">Biển số *</Form.Label>
+                <Form.Control
+                  type="text"
+                  size="sm"
+                  name="bienSoXe"
+                  value={formData.bienSoXe}
+                  onChange={handleInputChange}
+                  placeholder="Nhập biển số"
+                  required
+                  className="py-2"
+                />
+              </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Màu xe *</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="mauXe"
-                      value={formData.mauXe}
-                      onChange={handleInputChange}
-                      placeholder="Ví dụ: Trắng, Xanh..."
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="secondary" onClick={handleCloseModal}>
-                Hủy
-              </Button>
-              <Button variant="primary" type="submit">
-                Thêm xe
-              </Button>
-            </Modal.Footer>
+              <Form.Group className="mb-4">
+                <Form.Label className="small fw-semibold">
+                  Sức chứa *
+                </Form.Label>
+                <Form.Control
+                  type="number"
+                  size="sm"
+                  name="sucChua"
+                  value={formData.sucChua}
+                  onChange={handleInputChange}
+                  placeholder="Số lượng chỗ ngồi"
+                  required
+                  className="py-2"
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-4">
+                <Form.Label className="small fw-semibold">Màu xe *</Form.Label>
+                <Form.Control
+                  type="text"
+                  size="sm"
+                  name="mauXe"
+                  value={formData.mauXe}
+                  onChange={handleInputChange}
+                  placeholder="Ví dụ: Trắng, Xanh..."
+                  required
+                  className="py-2"
+                />
+              </Form.Group>
+
+              <div className="d-flex justify-content-end gap-2 mt-4">
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={handleCloseModal}
+                  className="px-3 py-2"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  className="px-3 py-2"
+                >
+                  Thêm xe
+                </Button>
+              </div>
+            </div>
           </Form>
         </Modal>
-
         {/* Modal Sửa xe */}
         <Modal show={showEditModal} onHide={handleCloseModal} size="lg">
           <Modal.Header closeButton>

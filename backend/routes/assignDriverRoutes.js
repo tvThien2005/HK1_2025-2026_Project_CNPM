@@ -3,7 +3,6 @@ const router = express.Router();
 const assignRoute = require("../controllers/assignDriverController");
 
 router.get("/", assignRoute.getAssign);
-router.get("/bus", assignRoute.getBus);
 router.get("/drivers", assignRoute.getDriver);
 router.get("/schedules", assignRoute.getSchedule);
 router.get("/routes", assignRoute.getRoute);

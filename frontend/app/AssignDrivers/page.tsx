@@ -786,26 +786,42 @@ const AssignPage = () => {
         <Modal
           show={showEditModal}
           onHide={() => setShowEditModal(false)}
-          size="lg"
           centered
+          backdrop="static"
+          dialogClassName="w-auto"
+          contentClassName="no-frame"
         >
-          <Modal.Header closeButton>
-            <Modal.Title>Sửa phân công</Modal.Title>
-          </Modal.Header>
           <Form onSubmit={handleEdit}>
-            <Modal.Body>
+            <div
+              className="p-4 rounded-3 bg-white shadow-sm position-relative"
+              style={{ width: 600 }}
+            >
+              <button
+                type="button"
+                className="btn-close position-absolute"
+                style={{ top: 20, right: 20 }}
+                onClick={() => setShowEditModal(false)}
+                aria-label="Close"
+              ></button>
+              <h5 className="text-center mb-4 fw-semibold fs-5">
+                Sửa phân công
+              </h5>
+
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Tài xế *</Form.Label>
+                    <Form.Label className="small fw-semibold">
+                      Tài xế *
+                    </Form.Label>
                     <Form.Select
+                      size="sm"
                       value={formEdit.maTaiXe}
                       onChange={(e) =>
                         setFormEdit((p) => ({ ...p, maTaiXe: e.target.value }))
                       }
                       required
                     >
-                      <option value="">-- Chọn tài xế --</option>
+                      <option value="">Chọn tài xế</option>
                       {drivers.map((d) => (
                         <option key={d.maTaiXe} value={d.maTaiXe}>
                           {d.tenTaiXe}
@@ -816,15 +832,18 @@ const AssignPage = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Xe buýt *</Form.Label>
+                    <Form.Label className="small fw-semibold">
+                      Xe buýt *
+                    </Form.Label>
                     <Form.Select
+                      size="sm"
                       value={formEdit.maXeBuyt}
                       onChange={(e) =>
                         setFormEdit((p) => ({ ...p, maXeBuyt: e.target.value }))
                       }
                       required
                     >
-                      <option value="">-- Chọn xe --</option>
+                      <option value="">Chọn xe</option>
                       {buses.map((b) => (
                         <option key={b.maXeBuyt} value={b.maXeBuyt}>
                           {b.bienSoXe}
@@ -838,8 +857,11 @@ const AssignPage = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Lịch trình *</Form.Label>
+                    <Form.Label className="small fw-semibold">
+                      Lịch trình *
+                    </Form.Label>
                     <Form.Select
+                      size="sm"
                       value={formEdit.maLichTrinh}
                       onChange={(e) =>
                         setFormEdit((p) => ({
@@ -849,7 +871,7 @@ const AssignPage = () => {
                       }
                       required
                     >
-                      <option value="">-- Chọn lịch trình --</option>
+                      <option value="">Chọn lịch trình</option>
                       {schedules.map((s) => (
                         <option key={s.maLichTrinh} value={s.maLichTrinh}>
                           {formatScheduleOption(s)}
@@ -859,9 +881,12 @@ const AssignPage = () => {
                   </Form.Group>
                 </Col>
                 <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Tuyến đường *</Form.Label>
+                  <Form.Group className="mb-4">
+                    <Form.Label className="small fw-semibold">
+                      Tuyến đường *
+                    </Form.Label>
                     <Form.Select
+                      size="sm"
                       value={formEdit.maTuyenDuong}
                       onChange={(e) =>
                         setFormEdit((p) => ({
@@ -871,7 +896,7 @@ const AssignPage = () => {
                       }
                       required
                     >
-                      <option value="">-- Chọn tuyến đường --</option>
+                      <option value="">Chọn tuyến đường</option>
                       {routes.map((r) => (
                         <option key={r.maTuyenDuong} value={r.maTuyenDuong}>
                           {r.tenTuyenDuong}
@@ -883,35 +908,58 @@ const AssignPage = () => {
               </Row>
 
               {selectedAssign && (
-                <div className="bg-light p-3 rounded">
-                  <small className="text-muted">
-                    <strong>Thông tin hệ thống:</strong>
-                    <br />
-                    Mã chuyến: {selectedAssign.maChuyenXe}
-                    <br />
-                    Tài xế: {selectedAssign.tenTaiXe}
-                    <br />
-                    Xe: {selectedAssign.tenXe} / {selectedAssign.bienSoXe}
-                    <br />
-                    Ngày: {formatDate(selectedAssign.ngay)}
-                    <br />
-                    Giờ: {selectedAssign.thoiGianDi} →{" "}
-                    {selectedAssign.thoiGianDen}
-                  </small>
+                <div className="border-start border-3 border-primary bg-light bg-opacity-10 p-3 rounded mb-4">
+                  <h6 className="text-primary mb-3 fw-semibold small">
+                    <i className="fas fa-info-circle me-2"></i>
+                    THÔNG TIN HỆ THỐNG
+                  </h6>
+                  <div className="row small text-muted">
+                    <div className="col-md-6 mb-2">
+                      <span className="fw-medium">Mã chuyến:</span>{" "}
+                      {selectedAssign.maChuyenXe}
+                    </div>
+                    <div className="col-md-6 mb-2">
+                      <span className="fw-medium">Tài xế:</span>{" "}
+                      {selectedAssign.tenTaiXe}
+                    </div>
+                    <div className="col-md-6 mb-2">
+                      <span className="fw-medium">Xe:</span>{" "}
+                      {selectedAssign.tenXe} / {selectedAssign.bienSoXe}
+                    </div>
+                    <div className="col-md-6 mb-2">
+                      <span className="fw-medium">Ngày:</span>{" "}
+                      {formatDate(selectedAssign.ngay)}
+                    </div>
+                    <div className="col-12 mb-2">
+                      <span className="fw-medium">Giờ:</span>
+                      <span className="badge bg-primary ms-2">
+                        {selectedAssign.thoiGianDi} →{" "}
+                        {selectedAssign.thoiGianDen}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button
-                variant="secondary"
-                onClick={() => setShowEditModal(false)}
-              >
-                Hủy
-              </Button>
-              <Button variant="primary" type="submit">
-                Cập nhật
-              </Button>
-            </Modal.Footer>
+
+              <div className="d-flex justify-content-end gap-2">
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-3 py-2"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  className="px-3 py-2"
+                >
+                  Cập nhật
+                </Button>
+              </div>
+            </div>
           </Form>
         </Modal>
       </Container>

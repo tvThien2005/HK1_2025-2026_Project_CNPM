@@ -28,18 +28,6 @@ const getAllAssignDrivers = (callback) => {
   );
 };
 
-const getAllBuses = (callback) => {
-  db.query(
-    "SELECT maXeBuyt, bienSoXe FROM xeBuyt WHERE trangThai = 'Hoạt động'",
-    (err, results) => {
-      if (err) {
-        console.error("❌ Lỗi truy vấn SQL:", err);
-      }
-      callback(err, results);
-    }
-  );
-};
-
 const getAllSchedules = (callback) => {
   db.query(
     "SELECT maLichTrinh, ngay, thoiGianDi, thoiGianDen FROM lichTrinh WHERE ngay >= CURDATE()",
@@ -173,7 +161,6 @@ const checkAllConflicts = (assignData, callback) => {
 
 module.exports = {
   getAllDrivers,
-  getAllBuses,
   getAllSchedules,
   getAllRoutes,
   getAllAssignDrivers,
