@@ -202,6 +202,7 @@ const AssignPage = () => {
   };
 
   // Search filter
+  // TRONG phần filtered, sửa phần so sánh ngày:
   const filtered = assigns.filter((a) => {
     const q = search.trim().toLowerCase();
     if (
@@ -219,24 +220,32 @@ const AssignPage = () => {
       return false;
     }
 
+    // SỬA PHẦN NÀY - sử dụng hàm điều chỉnh múi giờ
+    const adjustDateForComparison = (dateString: string) => {
+      if (
+        typeof dateString === "string" &&
+        dateString.match(/^\d{4}-\d{2}-\d{2}$/)
+      ) {
+        const [year, month, day] = dateString.split("-");
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        date.setDate(date.getDate() + 1); // Cộng thêm 1 ngày
+        return date.toISOString().split("T")[0];
+      }
+      const date = new Date(dateString);
+      date.setDate(date.getDate() + 1); // Cộng thêm 1 ngày
+      return date.toISOString().split("T")[0];
+    };
+
     if (dateFrom) {
-      // Parse dates without timezone conversion
-      const assignDateStr =
-        typeof a.ngay === "string"
-          ? a.ngay.split("T")[0]
-          : new Date(a.ngay).toISOString().split("T")[0];
-      if (assignDateStr < dateFrom) {
+      const assignDate = adjustDateForComparison(a.ngay);
+      if (assignDate < dateFrom) {
         return false;
       }
     }
 
     if (dateTo) {
-      // Parse dates without timezone conversion
-      const assignDateStr =
-        typeof a.ngay === "string"
-          ? a.ngay.split("T")[0]
-          : new Date(a.ngay).toISOString().split("T")[0];
-      if (assignDateStr > dateTo) {
+      const assignDate = adjustDateForComparison(a.ngay);
+      if (assignDate > dateTo) {
         return false;
       }
     }
@@ -255,25 +264,29 @@ const AssignPage = () => {
   const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
 
   // Format schedule display - parse date without timezone conversion
+  // THAY THẾ hàm formatScheduleOption cũ
+  // THAY THẾ hàm formatScheduleOption hiện tại
   const formatScheduleOption = (s: Schedule) => {
-    // Xử lý múi giờ đúng cách
     let dateStr: string;
 
     if (typeof s.ngay === "string") {
       // Nếu ngày đã ở dạng YYYY-MM-DD (không có timezone)
       if (s.ngay.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        dateStr = s.ngay;
+        const [year, month, day] = s.ngay.split("-");
+        // Cộng thêm 1 ngày để hiển thị đúng
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        date.setDate(date.getDate() + 1);
+        dateStr = date.toISOString().split("T")[0];
       } else {
         // Nếu có chứa timezone, parse và điều chỉnh
         const date = new Date(s.ngay);
-        // Thêm offset để hiển thị đúng ngày
-        date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+        date.setDate(date.getDate() + 1); // Thêm 1 ngày
         dateStr = date.toISOString().split("T")[0];
       }
     } else {
       // Nếu là Date object
       const date = new Date(s.ngay);
-      date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+      date.setDate(date.getDate() + 1); // Thêm 1 ngày
       dateStr = date.toISOString().split("T")[0];
     }
 
@@ -282,24 +295,26 @@ const AssignPage = () => {
 
   // Fallback mapping
   const mapAssignToIds = (a: Assign) => {
-    // Hàm điều chỉnh ngày
-    const adjustDate = (dateString: string) => {
+    // TRONG hàm mapAssignToIds, sửa hàm adjustDateForComparison:
+    const adjustDateForComparison = (dateString: string) => {
       if (
         typeof dateString === "string" &&
         dateString.match(/^\d{4}-\d{2}-\d{2}$/)
       ) {
-        return dateString;
+        const [year, month, day] = dateString.split("-");
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        // date.setDate(date.getDate() + 1); // Thêm 1 ngày
+        return date.toISOString().split("T")[0];
       }
       const date = new Date(dateString);
-      return new Date(date.getTime() + date.getTimezoneOffset() * 60000)
-        .toISOString()
-        .split("T")[0];
+      // date.setDate(date.getDate() + 1); // Thêm 1 ngày
+      return date.toISOString().split("T")[0];
     };
 
-    const assignDate = adjustDate(a.ngay);
+    const assignDate = adjustDateForComparison(a.ngay);
 
     const maLichTrinh = schedules.find((s) => {
-      const scheduleDate = adjustDate(s.ngay);
+      const scheduleDate = adjustDateForComparison(s.ngay);
       return (
         scheduleDate === assignDate &&
         s.thoiGianDi === a.thoiGianDi &&
@@ -436,24 +451,49 @@ const AssignPage = () => {
   };
 
   // Format date - parse date string (YYYY-MM-DD) directly without timezone conversion
+  // THAY THẾ hàm formatDate hiện tại bằng hàm này
   const formatDate = (dateString: string) => {
     try {
-      // Nếu đã là định dạng YYYY-MM-DD
+      // Nếu đã là định dạng YYYY-MM-DD thì parse trực tiếp
       if (
         typeof dateString === "string" &&
         dateString.match(/^\d{4}-\d{2}-\d{2}$/)
       ) {
         const [year, month, day] = dateString.split("-");
-        return `${day}/${month}/${year}`;
+        // Cộng thêm 1 ngày để bù múi giờ
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        date.setDate(date.getDate() + 1); // Thêm 1 ngày
+        return date.toLocaleDateString("vi-VN");
       }
 
-      // Xử lý các định dạng khác
+      // Xử lý các định dạng khác với điều chỉnh múi giờ
       const date = new Date(dateString);
-      // Điều chỉnh múi giờ
-      const adjustedDate = new Date(
-        date.getTime() + date.getTimezoneOffset() * 60000
-      );
-      return adjustedDate.toLocaleDateString("vi-VN");
+      // Điều chỉnh múi giờ: thêm 1 ngày để hiển thị đúng
+      date.setDate(date.getDate() + 1);
+      return date.toLocaleDateString("vi-VN");
+    } catch {
+      return dateString;
+    }
+  };
+  const formatDate1 = (dateString: string) => {
+    try {
+      // Nếu đã là định dạng YYYY-MM-DD thì parse trực tiếp
+      if (
+        typeof dateString === "string" &&
+        dateString.match(/^\d{4}-\d{2}-\d{2}$/)
+      ) {
+        const [year, month, day] = dateString.split("-");
+        // Cộng thêm 1 ngày để bù múi giờ
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        // date.setDate(date.getDate() + 1); // Thêm 1 ngày
+        return date.toLocaleDateString("vi-VN");
+      }
+
+      // Xử lý các định dạng khác với điều chỉnh múi giờ
+      const date = new Date(dateString);
+      // Điều chỉnh múi giờ: thêm 1 ngày để hiển thị đúng
+      // date.setDate(date.getDate() + 1);
+      return date.toLocaleDateString("vi-VN");
     } catch {
       return dateString;
     }
@@ -606,7 +646,7 @@ const AssignPage = () => {
                       </td>
                       <td>{a.tenTaiXe}</td>
                       <td>{a.bienSoXe}</td>
-                      <td>{formatDate(a.ngay)}</td>
+                      <td>{formatDate1(a.ngay)}</td>
                       <td>
                         {a.thoiGianDi} → {a.thoiGianDen}
                       </td>

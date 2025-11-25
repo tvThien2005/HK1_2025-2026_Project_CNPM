@@ -103,9 +103,9 @@ const HomePage = () => {
   return (
     <Container fluid>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="my-4">Dashboard</h1>
+        <h3 className="my-4">Tổng quan hệ thống Bus Tracking</h3>
         <Button
-          variant="outline-primary"
+          variant="primary"
           onClick={fetchDashboardData}
           disabled={loading}
           size="sm"
