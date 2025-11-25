@@ -1,5 +1,6 @@
 // frontend/app/layout.tsx
 import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 import "./globals.css";
 import React from "react";
 import Sidebar from "../components/Sidebar";

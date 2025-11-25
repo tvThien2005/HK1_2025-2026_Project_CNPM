@@ -51,11 +51,11 @@ const addUser = (user, callback) => {
       String(now.getDate()).padStart(2, "0");
 
     const trangThai = "Active";
-    const tinhTrang = "1";
+    const block = "1";
 
     db.query(
-      "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai, tinhTrang) VALUES (?, ?, ?, ?, ?, ?)",
-      [tenDangNhap, matKhau, ngayTao, capDo, trangThai, tinhTrang],
+      "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai, block) VALUES (?, ?, ?, ?, ?, ?)",
+      [tenDangNhap, matKhau, ngayTao, capDo, trangThai, block],
       (err, results) => {
         if (err) return callback(err);
 
@@ -103,7 +103,7 @@ const updateUser = (id, user, callback) => {
 
 const blockUser = (id, callback) => {
   db.query(
-    "UPDATE taiKhoan SET tinhTrang = 0 WHERE maTaiKhoan = ?",
+    "UPDATE taiKhoan SET block = 0 WHERE maTaiKhoan = ?",
     [id],
     (err, results) => {
       if (err) {
@@ -120,7 +120,7 @@ const blockUser = (id, callback) => {
 };
 const unblockUser = (id, callback) => {
   db.query(
-    "UPDATE taiKhoan SET tinhTrang = 1 WHERE maTaiKhoan = ?",
+    "UPDATE taiKhoan SET block = 1 WHERE maTaiKhoan = ?",
     [id],
     (err, results) => {
       if (err) {
@@ -135,7 +135,7 @@ const unblockUser = (id, callback) => {
 const loginUser = (username, password) => {
   return new Promise((resolve, reject) => {
     db.query(
-      "SELECT * FROM taiKhoan WHERE tenDangNhap = ? AND matKhau = ? AND trangThai = 'Active' AND tinhTrang = 1 AND capDo = 'Manager'",
+      "SELECT * FROM taiKhoan WHERE tenDangNhap = ? AND matKhau = ? AND trangThai = 'Active' AND block = 0 AND capDo = 'Manager'",
       [username, password],
       (err, results) => {
         if (err) {

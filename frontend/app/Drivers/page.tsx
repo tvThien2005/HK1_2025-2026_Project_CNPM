@@ -350,7 +350,7 @@ const DriversPage = () => {
       </Head>
       <Container fluid>
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="my-2 mb-0">Quản lý tài xế</h2>
+          <h2 className="my-4">Quản lý tài xế</h2>
           <Button variant="primary" onClick={handleShowAddModal}>
             Thêm tài xế mới
           </Button>

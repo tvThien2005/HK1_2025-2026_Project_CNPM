@@ -8,6 +8,9 @@ import {
   Button,
   Badge,
   ListGroup,
+  Tabs,
+  Tab,
+  Accordion,
 } from "react-bootstrap";
 import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
@@ -1764,10 +1767,10 @@ const VehiclesPage: React.FC = () => {
           </Col>
         </Row>
 
-        <Row>
-          <Col lg={isFullscreen ? 12 : 8}>
+        <Row className="g-3">
+          <Col lg={isFullscreen ? 12 : 7}>
             <Card className="shadow-sm">
-              <Card.Body>
+              <Card.Body className="p-3">
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <Card.Title className="mb-0">
                     Bản đồ theo dõi
@@ -1813,88 +1816,101 @@ const VehiclesPage: React.FC = () => {
           </Col>
 
           {!isFullscreen && (
-            <Col lg={4}>
+            <Col lg={5}>
               <Card className="shadow-sm mb-3">
-                <Card.Body>
-                  <Card.Title>Trạng thái hệ thống</Card.Title>
-                  <ListGroup variant="flush">
-                    <ListGroup.Item className="d-flex justify-content-between">
-                      <span>Chế độ:</span>
-                      <Badge bg={isRealTime ? "success" : "secondary"}>
-                        {isRealTime ? "Real-time" : "Tĩnh"}
-                      </Badge>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="d-flex justify-content-between">
-                      <span>Số xe:</span>
-                      <Badge bg="primary">{buses.length}</Badge>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="d-flex justify-content-between">
-                      <span>Tổng trạm:</span>
-                      <Badge bg="info">
-                        {buses.reduce(
-                          (total, bus) => total + bus.route.stations.length,
-                          0
-                        )}
-                      </Badge>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="d-flex justify-content-between">
-                      <span>Cập nhật:</span>
-                      <span className="text-muted small">
-                        {buses[0]?.lastUpdate || "--:--:--"}
-                      </span>
-                    </ListGroup.Item>
-                  </ListGroup>
+                <Card.Body className="p-3">
+                  <Card.Title className="mb-2">Trạng thái hệ thống</Card.Title>
+                  <div className="row g-2">
+                    <div className="col-6">
+                      <div className="d-flex justify-content-between align-items-center bg-light p-2 rounded">
+                        <small>Chế độ:</small>
+                        <Badge
+                          bg={isRealTime ? "success" : "secondary"}
+                          className="small"
+                        >
+                          {isRealTime ? "Real-time" : "Tĩnh"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="col-6">
+                      <div className="d-flex justify-content-between align-items-center bg-light p-2 rounded">
+                        <small>Số xe:</small>
+                        <Badge bg="primary" className="small">
+                          {buses.length}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="col-6">
+                      <div className="d-flex justify-content-between align-items-center bg-light p-2 rounded">
+                        <small>Tổng trạm:</small>
+                        <Badge bg="info" className="small">
+                          {buses.reduce(
+                            (total, bus) => total + bus.route.stations.length,
+                            0
+                          )}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="col-6">
+                      <div className="d-flex justify-content-between align-items-center bg-light p-2 rounded">
+                        <small>Cập nhật:</small>
+                        <small className="text-muted">
+                          {buses[0]?.lastUpdate || "--:--:--"}
+                        </small>
+                      </div>
+                    </div>
+                  </div>
                 </Card.Body>
               </Card>
 
               {buses.length > 0 && (
                 <Card className="shadow-sm mb-3">
                   <Card.Body>
-                    <Card.Title>Danh sách xe</Card.Title>
-                    <ListGroup variant="flush">
-                      {buses.map((bus) => (
-                        <ListGroup.Item
-                          key={bus.id}
-                          action
-                          active={selectedBus?.id === bus.id}
-                          onClick={() => handleBusSelect(bus)}
-                        >
-                          <div className="d-flex justify-content-between align-items-start">
-                            <div>
-                              <h6 className="mb-1">
-                                {bus.name}
-                                {getCurrentStationInfo(bus) && " 🚏"}
-                              </h6>
-                              <small>{bus.licensePlate}</small>
-                              <br />
-                              <small>Tài xế: {bus.route.driver}</small>
-                              <br />
-                              <small className="text-muted">
-                                Tốc độ: {bus.speed || 0} km/h
-                              </small>
-                              <br />
-                              <small className="text-success">
-                                ✅ Đã đến: {getUniquePickedUpCount(bus)}/
-                                {bus.route.stations.length} trạm
-                              </small>
-                              {getCurrentStationInfo(bus) && (
-                                <>
-                                  <br />
-                                  <small className="text-warning">
-                                    🚏 Hiện tại:{" "}
-                                    {getCurrentStationInfo(bus)?.name}
-                                    {bus.speed === 0 && ""}
+                    <Card.Title>Danh sách xe ({buses.length})</Card.Title>
+                    <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                      <ListGroup variant="flush">
+                        {buses.map((bus) => (
+                          <ListGroup.Item
+                            key={bus.id}
+                            action
+                            active={selectedBus?.id === bus.id}
+                            onClick={() => handleBusSelect(bus)}
+                            className="py-2"
+                          >
+                            <div className="d-flex justify-content-between align-items-center">
+                              <div className="flex-grow-1">
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <h6 className="mb-0">
+                                    {bus.name}{" "}
+                                    {getCurrentStationInfo(bus) && "🚏"}
+                                  </h6>
+                                  <Badge
+                                    bg={getStatusColor(bus.route.currentStatus)}
+                                    className="ms-2"
+                                  >
+                                    {getStatusText(bus.route.currentStatus)}
+                                  </Badge>
+                                </div>
+                                <div className="d-flex justify-content-between mt-1">
+                                  <small className="text-muted">
+                                    {bus.licensePlate} • {bus.route.driver}
                                   </small>
-                                </>
-                              )}
+                                  <small className="text-success fw-bold">
+                                    {getUniquePickedUpCount(bus)}/
+                                    {bus.route.stations.length}
+                                  </small>
+                                </div>
+                                {getCurrentStationInfo(bus) && (
+                                  <small className="text-warning d-block">
+                                    🚏 {getCurrentStationInfo(bus)?.name}
+                                  </small>
+                                )}
+                              </div>
                             </div>
-                            <Badge bg={getStatusColor(bus.route.currentStatus)}>
-                              {getStatusText(bus.route.currentStatus)}
-                            </Badge>
-                          </div>
-                        </ListGroup.Item>
-                      ))}
-                    </ListGroup>
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    </div>
                   </Card.Body>
                 </Card>
               )}
@@ -1902,166 +1918,214 @@ const VehiclesPage: React.FC = () => {
               {selectedBus && (
                 <Card className="shadow-sm">
                   <Card.Body>
-                    <Card.Title>Chi tiết lộ trình</Card.Title>
-                    <h6>Lộ trình: {selectedBus.route.name}</h6>
-                    <p>
-                      <strong>Trường:</strong> {selectedBus.route.school.name}
-                    </p>
-                    <p>
-                      <strong>Giờ vào lớp:</strong>{" "}
-                      {selectedBus.route.school.startTime}
-                    </p>
+                    <Card.Title className="d-flex justify-content-between align-items-center">
+                      <span>Chi tiết: {selectedBus.name}</span>
+                      <small className="text-muted">
+                        {selectedBus.licensePlate}
+                      </small>
+                    </Card.Title>
 
-                    <h6 className="mt-3">Tiến trình:</h6>
-                    <div className="progress mb-3" style={{ height: "20px" }}>
-                      <div
-                        className="progress-bar"
-                        style={{
-                          width: `${getProgressPercentage(selectedBus)}%`,
-                        }}
-                      >
-                        {Math.round(getProgressPercentage(selectedBus))}%
-                      </div>
-                    </div>
-
-                    <h6 className="mt-3">Danh sách trạm:</h6>
-                    <div style={{ maxHeight: "300px", overflowY: "auto" }}>
-                      {selectedBus.route.stations.map((station, index) => {
-                        const isPickedUp = isStationPickedUp(
-                          selectedBus,
-                          station.id
-                        );
-                        const isCurrent =
-                          index === selectedBus.currentStationIndex;
-
-                        return (
-                          <Card
-                            key={station.id}
-                            className="mb-2"
-                            style={{
-                              opacity: isPickedUp ? 0.7 : 1,
-                              borderLeft: isCurrent
-                                ? "4px solid #ffc107"
-                                : isPickedUp
-                                ? "4px solid #198754"
-                                : "4px solid transparent",
-                              backgroundColor: isCurrent ? "#fff3cd" : "white",
-                            }}
-                          >
-                            <Card.Body className="py-2">
-                              <div className="d-flex justify-content-between">
-                                <div style={{ flex: 1 }}>
-                                  <h6 className="mb-1">
-                                    🟢 {station.name}
-                                    {isCurrent && (
-                                      <Badge bg="warning" className="ms-1">
-                                        ⭐ Đang tại
-                                      </Badge>
-                                    )}
-                                    {isPickedUp && !isCurrent && (
-                                      <Badge bg="success" className="ms-1">
-                                        ✅ Đã đến
-                                      </Badge>
-                                    )}
-                                  </h6>
-                                  <small className="text-muted d-block">
-                                    <strong>Học sinh:</strong>{" "}
-                                    {station.studentCount} em
-                                  </small>
-                                  <small className="text-muted d-block">
-                                    <strong>Giờ dự kiến:</strong>{" "}
-                                    {station.estimatedArrival}
-                                  </small>
-                                  {station.description && (
-                                    <small className="text-muted d-block">
-                                      <strong>Mô tả:</strong>{" "}
-                                      {station.description}
-                                    </small>
-                                  )}
-                                </div>
-                                <Badge bg="success">{index + 1}</Badge>
-                              </div>
-                            </Card.Body>
-                          </Card>
-                        );
-                      })}
-
-                      {/* Trường học */}
-                      <Card
-                        className="mb-2"
-                        style={{
-                          borderLeft:
-                            selectedBus.route.currentStatus === "completed"
-                              ? "4px solid #198754"
-                              : "4px solid #0d6efd",
-                        }}
-                      >
-                        <Card.Body className="py-2">
-                          <h6 className="mb-1">
-                            🏫 {selectedBus.route.school.name}
-                            {selectedBus.route.currentStatus ===
-                              "going_to_school" && (
-                              <Badge bg="primary" className="ms-1">
-                                Đang đến
-                              </Badge>
-                            )}
-                            {selectedBus.route.currentStatus ===
-                              "completed" && (
-                              <Badge bg="success" className="ms-1">
-                                ✅ Đã đến
-                              </Badge>
-                            )}
-                          </h6>
-                          <small className="text-muted">
-                            Giờ vào lớp: {selectedBus.route.school.startTime}
-                          </small>
-                        </Card.Body>
-                      </Card>
-                    </div>
-
-                    {/* Thống kê */}
-                    <div className="mt-3 p-2 bg-light rounded">
-                      <div className="row text-center">
-                        <div className="col-4">
+                    {/* Compact Info */}
+                    <div className="mb-3 p-2 bg-light rounded">
+                      <div className="row g-0 text-center">
+                        <div className="col-6">
                           <div className="text-primary">
                             <strong>
-                              {
-                                selectedBus.route.stations.filter(
-                                  (s) => s.type === "pickup"
-                                ).length
-                              }
+                              {Math.round(getProgressPercentage(selectedBus))}%
                             </strong>
                             <br />
-                            <small>Trạm đón</small>
+                            <small>Tiến độ</small>
                           </div>
                         </div>
-                        <div className="col-4">
+                        <div className="col-6">
                           <div className="text-success">
                             <strong>
-                              {
-                                selectedBus.route.stations.filter(
-                                  (s) => s.type === "dropoff"
-                                ).length
-                              }
+                              {getUniquePickedUpCount(selectedBus)}/
+                              {selectedBus.route.stations.length}
                             </strong>
                             <br />
-                            <small>Trạm trả</small>
-                          </div>
-                        </div>
-                        <div className="col-4">
-                          <div className="text-warning">
-                            <strong>
-                              {selectedBus.route.stations.reduce(
-                                (sum, s) => sum + s.studentCount,
-                                0
-                              )}
-                            </strong>
-                            <br />
-                            <small>Học sinh</small>
+                            <small>Trạm hoàn thành</small>
                           </div>
                         </div>
                       </div>
+                      <div className="progress mt-2" style={{ height: "8px" }}>
+                        <div
+                          className="progress-bar"
+                          style={{
+                            width: `${getProgressPercentage(selectedBus)}%`,
+                          }}
+                        ></div>
+                      </div>
                     </div>
+
+                    <Tabs defaultActiveKey="stations" className="mb-3">
+                      {/* Tab Trạm */}
+                      <Tab
+                        eventKey="stations"
+                        title={`Trạm (${selectedBus.route.stations.length})`}
+                      >
+                        <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                          {selectedBus.route.stations.map((station, index) => {
+                            const isPickedUp = isStationPickedUp(
+                              selectedBus,
+                              station.id
+                            );
+                            const isCurrent =
+                              index === selectedBus.currentStationIndex;
+
+                            return (
+                              <div
+                                key={station.id}
+                                className={`d-flex align-items-center p-2 mb-2 rounded ${
+                                  isCurrent
+                                    ? "bg-warning-subtle border border-warning"
+                                    : isPickedUp
+                                    ? "bg-success-subtle"
+                                    : "bg-light"
+                                }`}
+                                style={{
+                                  opacity: isPickedUp && !isCurrent ? 0.6 : 1,
+                                }}
+                              >
+                                <div className="me-2">
+                                  <Badge
+                                    bg={
+                                      isCurrent
+                                        ? "warning"
+                                        : isPickedUp
+                                        ? "success"
+                                        : "secondary"
+                                    }
+                                  >
+                                    {index + 1}
+                                  </Badge>
+                                </div>
+                                <div className="flex-grow-1">
+                                  <div className="d-flex justify-content-between align-items-center">
+                                    <span className="fw-medium">
+                                      {station.name}
+                                    </span>
+                                    <div>
+                                      {isCurrent && (
+                                        <Badge bg="warning">Đang tại</Badge>
+                                      )}
+                                      {isPickedUp && !isCurrent && (
+                                        <Badge bg="success">✓</Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <small className="text-muted">
+                                    {station.studentCount} học sinh
+                                    {station.estimatedArrival &&
+                                      ` • ${station.estimatedArrival}`}
+                                  </small>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* Trường học - compact */}
+                          <div
+                            className={`d-flex align-items-center p-2 mt-3 rounded ${
+                              selectedBus.route.currentStatus === "completed"
+                                ? "bg-success-subtle border border-success"
+                                : "bg-primary-subtle"
+                            }`}
+                          >
+                            <div className="me-2">
+                              <Badge bg="primary">🏫</Badge>
+                            </div>
+                            <div className="flex-grow-1">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <span className="fw-medium">
+                                  {selectedBus.route.school.name}
+                                </span>
+                                {selectedBus.route.currentStatus ===
+                                  "going_to_school" && (
+                                  <Badge bg="primary">Đang đến</Badge>
+                                )}
+                                {selectedBus.route.currentStatus ===
+                                  "completed" && (
+                                  <Badge bg="success">✓ Đã đến</Badge>
+                                )}
+                              </div>
+                              <small className="text-muted">
+                                Giờ vào lớp:{" "}
+                                {selectedBus.route.school.startTime}
+                              </small>
+                            </div>
+                          </div>
+                        </div>
+                      </Tab>
+
+                      {/* Tab Thông tin */}
+                      <Tab eventKey="info" title="Thông tin">
+                        <div className="row g-2">
+                          <div className="col-12">
+                            <Card className="border-0 bg-light">
+                              <Card.Body className="py-2">
+                                <h6>🚌 Thông tin xe</h6>
+                                <p className="mb-1">
+                                  <strong>Biển số:</strong>{" "}
+                                  {selectedBus.licensePlate}
+                                </p>
+                                <p className="mb-1">
+                                  <strong>Tài xế:</strong>{" "}
+                                  {selectedBus.route.driver}
+                                </p>
+                                <p className="mb-1">
+                                  <strong>Tuyến:</strong>{" "}
+                                  {selectedBus.route.name}
+                                </p>
+                                <p className="mb-0">
+                                  <strong>Tốc độ:</strong>{" "}
+                                  {selectedBus.speed || 0} km/h
+                                </p>
+                              </Card.Body>
+                            </Card>
+                          </div>
+                          <div className="col-12">
+                            <Card className="border-0 bg-light">
+                              <Card.Body className="py-2">
+                                <h6>📊 Thống kê</h6>
+                                <div className="row text-center">
+                                  <div className="col-4">
+                                    <div className="text-primary">
+                                      <strong>
+                                        {selectedBus.route.stations.length}
+                                      </strong>
+                                      <br />
+                                      <small>Tổng trạm</small>
+                                    </div>
+                                  </div>
+                                  <div className="col-4">
+                                    <div className="text-success">
+                                      <strong>
+                                        {getUniquePickedUpCount(selectedBus)}
+                                      </strong>
+                                      <br />
+                                      <small>Đã hoàn thành</small>
+                                    </div>
+                                  </div>
+                                  <div className="col-4">
+                                    <div className="text-warning">
+                                      <strong>
+                                        {selectedBus.route.stations.reduce(
+                                          (sum, s) => sum + s.studentCount,
+                                          0
+                                        )}
+                                      </strong>
+                                      <br />
+                                      <small>Học sinh</small>
+                                    </div>
+                                  </div>
+                                </div>
+                              </Card.Body>
+                            </Card>
+                          </div>
+                        </div>
+                      </Tab>
+                    </Tabs>
                   </Card.Body>
                 </Card>
               )}
