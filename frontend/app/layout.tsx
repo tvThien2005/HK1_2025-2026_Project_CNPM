@@ -1,5 +1,6 @@
 // frontend/app/layout.tsx
 import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 import "./globals.css";
 import React from "react";
 import Sidebar from "../components/Sidebar";
@@ -14,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body>
+      <body suppressHydrationWarning={true}>
         <LayoutWrapper>{children}</LayoutWrapper>
       </body>
     </html>

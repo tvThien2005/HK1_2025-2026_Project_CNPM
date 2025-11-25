@@ -38,10 +38,10 @@ const addDriver = (driver, callback) => {
     const ngayTao = new Date().toISOString().slice(0, 10);
     const trangThai = "Active";
     const capDo = "Driver";
-    const tinhTrang = 1;
+    const block = 1;
     db.query(
-      "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai,tinhTrang) VALUES (?, ?, ?, ?, ?,?)",
-      [soDienThoai, ngaySinh, ngayTao, capDo, trangThai, tinhTrang],
+      "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai,block) VALUES (?, ?, ?, ?, ?,?)",
+      [soDienThoai, ngaySinh, ngayTao, capDo, trangThai, block],
       (err, results) => {
         if (err) return callback(err);
         if (results.length > 0) {

@@ -51,11 +51,11 @@ const addUser = (user, callback) => {
       String(now.getDate()).padStart(2, "0");
 
     const trangThai = "Active";
-    const tinhTrang = "1";
+    const block = "1";
 
     db.query(
-      "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai, tinhTrang) VALUES (?, ?, ?, ?, ?, ?)",
-      [tenDangNhap, matKhau, ngayTao, capDo, trangThai, tinhTrang],
+      "INSERT INTO taiKhoan (tenDangNhap, matKhau, ngayTao, capDo, trangThai, block) VALUES (?, ?, ?, ?, ?, ?)",
+      [tenDangNhap, matKhau, ngayTao, capDo, trangThai, block],
       (err, results) => {
         if (err) return callback(err);
 

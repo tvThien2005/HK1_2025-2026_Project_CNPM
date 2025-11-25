@@ -1,4 +1,4 @@
-// const db = require("../config/db");
+const db = require("../config/db");
 
 // // Lấy tất cả dữ liệu cho bản đồ
 // exports.getAllBusData = async () => {
@@ -40,318 +40,6 @@
 //     throw new Error(`Lỗi lấy dữ liệu bus: ${error.message}`);
 //   }
 // };
-
-// // Các hàm lấy dữ liệu từ database
-// exports.getHocSinh = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM hocsinh", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getHocSinh:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// exports.getDiaChi = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM diachi", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getDiaChi:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// exports.getViTriThuc = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM vitrithuc", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getViTriThuc:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// exports.getTaiXe = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM taixe", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getTaiXe:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// exports.getXeBuyt = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM xebuyt", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getXeBuyt:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// exports.getChuyenXe = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM chuyenxe", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getChuyenXe:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// exports.getLichTrinh = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM lichtrinh", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getLichTrinh:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// exports.getTuyenDuong = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM tuyenduong", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getTuyenDuong:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// exports.getPhanBoHocSinh = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM phanbohocsinh", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getPhanBoHocSinh:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// // Cập nhật vị trí xe (cho real-time tracking)
-// exports.updateBusPosition = (busId, lat, lng, speed) => {
-//   return new Promise((resolve, reject) => {
-//     const query = `
-//       INSERT INTO vitrichuyenxe (maChuyenXe, maViTriThuc, thoiGianGhiNhan)
-//       VALUES (?, ?, NOW())
-//     `;
-
-//     // First, create or get location ID
-//     const locationQuery = "INSERT INTO vitrithuc (viDo, kinhDo) VALUES (?, ?)";
-
-//     db.query(locationQuery, [lat, lng], (err, locationResult) => {
-//       if (err) {
-//         console.error("❌ Lỗi tạo vị trí:", err);
-//         reject(err);
-//         return;
-//       }
-
-//       const locationId = locationResult.insertId;
-
-//       db.query(query, [busId, locationId], (err, result) => {
-//         if (err) {
-//           console.error("❌ Lỗi cập nhật vị trí:", err);
-//           reject(err);
-//         } else {
-//           resolve({ busId, lat, lng, speed, timestamp: new Date() });
-//         }
-//       });
-//     });
-//   });
-// };
-
-// // Lấy vị trí hiện tại của các xe
-// exports.getCurrentPositions = () => {
-//   return new Promise((resolve, reject) => {
-//     const query = `
-//       SELECT cx.maChuyenXe, xb.bienSoXe, tx.tenTaiXe, vt.viDo, vt.kinhDo, vcx.thoiGianGhiNhan
-//       FROM vitrichuyenxe vcx
-//       INNER JOIN vitrithuc vt ON vcx.maViTriThuc = vt.maViTriThuc
-//       INNER JOIN chuyenxe cx ON vcx.maChuyenXe = cx.maChuyenXe
-//       INNER JOIN xebuyt xb ON cx.maXeBuyt = xb.maXeBuyt
-//       INNER JOIN taixe tx ON cx.maTaiXe = tx.maTaiXe
-//       WHERE vcx.thoiGianGhiNhan = (
-//         SELECT MAX(thoiGianGhiNhan)
-//         FROM vitrichuyenxe
-//         WHERE maChuyenXe = cx.maChuyenXe
-//       )
-//     `;
-
-//     db.query(query, (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getCurrentPositions:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// // trackingService.js - Thêm các hàm mới
-
-// // Lấy tất cả dữ liệu cho bản đồ (phiên bản mới với trạm)
-// exports.getAllBusDataWithStations = async () => {
-//   try {
-//     const [
-//       hocsinh,
-//       diachi,
-//       vitrithuc,
-//       taixe,
-//       xebuyt,
-//       chuyenxe,
-//       lichtrinh,
-//       tuyenduong,
-//       diemdung,
-//       phanbohocsinhtram,
-//       phanbotramxe,
-//     ] = await Promise.all([
-//       this.getHocSinh(),
-//       this.getDiaChi(),
-//       this.getViTriThuc(),
-//       this.getTaiXe(),
-//       this.getXeBuyt(),
-//       this.getChuyenXe(),
-//       this.getLichTrinh(),
-//       this.getTuyenDuong(),
-//       this.getDiemDung(),
-//       this.getPhanBoHocSinhTram(),
-//       this.getPhanBoTramXe(),
-//     ]);
-
-//     return {
-//       hocsinh,
-//       diachi,
-//       vitrithuc,
-//       taixe,
-//       xebuyt,
-//       chuyenxe,
-//       lichtrinh,
-//       tuyenduong,
-//       diemdung,
-//       phanbohocsinhtram,
-//       phanbotramxe,
-//     };
-//   } catch (error) {
-//     throw new Error(`Lỗi lấy dữ liệu bus với trạm: ${error.message}`);
-//   }
-// };
-
-// // Các hàm mới để lấy dữ liệu trạm
-// exports.getDiemDung = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM diemdung", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getDiemDung:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// exports.getPhanBoHocSinhTram = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM phanbohocsinhtram", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getPhanBoHocSinhTram:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-// exports.getPhanBoTramXe = () => {
-//   return new Promise((resolve, reject) => {
-//     db.query("SELECT * FROM phanbotramxe", (err, results) => {
-//       if (err) {
-//         console.error("❌ Lỗi getPhanBoTramXe:", err);
-//         reject(err);
-//       } else {
-//         resolve(results);
-//       }
-//     });
-//   });
-// };
-
-const db = require("../config/db");
-
-// ==================== CODE CŨ - GIỮ NGUYÊN ====================
-
-// Lấy tất cả dữ liệu cho bản đồ
-exports.getAllBusData = async () => {
-  try {
-    const [
-      hocsinh,
-      diachi,
-      vitrithuc,
-      taixe,
-      xebuyt,
-      chuyenxe,
-      lichtrinh,
-      tuyenduong,
-      phanbohocsinh,
-    ] = await Promise.all([
-      this.getHocSinh(),
-      this.getDiaChi(),
-      this.getViTriThuc(),
-      this.getTaiXe(),
-      this.getXeBuyt(),
-      this.getChuyenXe(),
-      this.getLichTrinh(),
-      this.getTuyenDuong(),
-      this.getPhanBoHocSinh(),
-    ]);
-
-    return {
-      hocsinh,
-      diachi,
-      vitrithuc,
-      taixe,
-      xebuyt,
-      chuyenxe,
-      lichtrinh,
-      tuyenduong,
-      phanbohocsinh,
-    };
-  } catch (error) {
-    throw new Error(`Lỗi lấy dữ liệu bus: ${error.message}`);
-  }
-};
 
 // Các hàm lấy dữ liệu từ database
 exports.getHocSinh = () => {
@@ -472,64 +160,64 @@ exports.getPhanBoHocSinh = () => {
 };
 
 // Cập nhật vị trí xe (cho real-time tracking)
-exports.updateBusPosition = (busId, lat, lng, speed) => {
-  return new Promise((resolve, reject) => {
-    const query = `
-      INSERT INTO vitrichuyenxe (maChuyenXe, maViTriThuc, thoiGianGhiNhan) 
-      VALUES (?, ?, NOW())
-    `;
+// exports.updateBusPosition = (busId, lat, lng, speed) => {
+//   return new Promise((resolve, reject) => {
+//     const query = `
+//       INSERT INTO vitrichuyenxe (maChuyenXe, maViTriThuc, thoiGianGhiNhan)
+//       VALUES (?, ?, NOW())
+//     `;
 
-    // First, create or get location ID
-    const locationQuery = "INSERT INTO vitrithuc (viDo, kinhDo) VALUES (?, ?)";
+//     // First, create or get location ID
+//     const locationQuery = "INSERT INTO vitrithuc (viDo, kinhDo) VALUES (?, ?)";
 
-    db.query(locationQuery, [lat, lng], (err, locationResult) => {
-      if (err) {
-        console.error("❌ Lỗi tạo vị trí:", err);
-        reject(err);
-        return;
-      }
+//     db.query(locationQuery, [lat, lng], (err, locationResult) => {
+//       if (err) {
+//         console.error("❌ Lỗi tạo vị trí:", err);
+//         reject(err);
+//         return;
+//       }
 
-      const locationId = locationResult.insertId;
+//       const locationId = locationResult.insertId;
 
-      db.query(query, [busId, locationId], (err, result) => {
-        if (err) {
-          console.error("❌ Lỗi cập nhật vị trí:", err);
-          reject(err);
-        } else {
-          resolve({ busId, lat, lng, speed, timestamp: new Date() });
-        }
-      });
-    });
-  });
-};
+//       db.query(query, [busId, locationId], (err, result) => {
+//         if (err) {
+//           console.error("❌ Lỗi cập nhật vị trí:", err);
+//           reject(err);
+//         } else {
+//           resolve({ busId, lat, lng, speed, timestamp: new Date() });
+//         }
+//       });
+//     });
+//   });
+// };
 
 // Lấy vị trí hiện tại của các xe
-exports.getCurrentPositions = () => {
-  return new Promise((resolve, reject) => {
-    const query = `
-      SELECT cx.maChuyenXe, xb.bienSoXe, tx.tenTaiXe, vt.viDo, vt.kinhDo, vcx.thoiGianGhiNhan
-      FROM vitrichuyenxe vcx
-      INNER JOIN vitrithuc vt ON vcx.maViTriThuc = vt.maViTriThuc
-      INNER JOIN chuyenxe cx ON vcx.maChuyenXe = cx.maChuyenXe
-      INNER JOIN xebuyt xb ON cx.maXeBuyt = xb.maXeBuyt
-      INNER JOIN taixe tx ON cx.maTaiXe = tx.maTaiXe
-      WHERE vcx.thoiGianGhiNhan = (
-        SELECT MAX(thoiGianGhiNhan) 
-        FROM vitrichuyenxe 
-        WHERE maChuyenXe = cx.maChuyenXe
-      )
-    `;
+// exports.getCurrentPositions = () => {
+//   return new Promise((resolve, reject) => {
+//     const query = `
+//       SELECT cx.maChuyenXe, xb.bienSoXe, tx.tenTaiXe, vt.viDo, vt.kinhDo, vcx.thoiGianGhiNhan
+//       FROM vitrichuyenxe vcx
+//       INNER JOIN vitrithuc vt ON vcx.maViTriThuc = vt.maViTriThuc
+//       INNER JOIN chuyenxe cx ON vcx.maChuyenXe = cx.maChuyenXe
+//       INNER JOIN xebuyt xb ON cx.maXeBuyt = xb.maXeBuyt
+//       INNER JOIN taixe tx ON cx.maTaiXe = tx.maTaiXe
+//       WHERE vcx.thoiGianGhiNhan = (
+//         SELECT MAX(thoiGianGhiNhan)
+//         FROM vitrichuyenxe
+//         WHERE maChuyenXe = cx.maChuyenXe
+//       )
+//     `;
 
-    db.query(query, (err, results) => {
-      if (err) {
-        console.error("❌ Lỗi getCurrentPositions:", err);
-        reject(err);
-      } else {
-        resolve(results);
-      }
-    });
-  });
-};
+//     db.query(query, (err, results) => {
+//       if (err) {
+//         console.error("❌ Lỗi getCurrentPositions:", err);
+//         reject(err);
+//       } else {
+//         resolve(results);
+//       }
+//     });
+//   });
+// };
 
 // ==================== HÀM CŨ VỚI TRẠM - GIỮ NGUYÊN ====================
 
@@ -559,11 +247,11 @@ exports.getPhanBoHocSinhTram = () => {
   });
 };
 
-exports.getPhanBoTramXe = () => {
+exports.getChiTietTuyenDuong = () => {
   return new Promise((resolve, reject) => {
-    db.query("SELECT * FROM phanbotramxe", (err, results) => {
+    db.query("SELECT * FROM chitiettuyenduong", (err, results) => {
       if (err) {
-        console.error("❌ Lỗi getPhanBoTramXe:", err);
+        console.error("❌ Lỗi getChiTietTuyenDuong:", err);
         reject(err);
       } else {
         resolve(results);
@@ -590,14 +278,14 @@ exports.getAllBusDataWithStations = async () => {
       lichtrinh,
       tuyenduong,
     ] = await Promise.all([
-      this.getHocSinh(),
-      this.getDiaChi(),
-      this.getViTriThuc(),
-      this.getTaiXe(),
-      this.getXeBuyt(),
-      this.getChuyenXe(),
-      this.getLichTrinh(),
-      this.getTuyenDuong(),
+      module.exports.getHocSinh(),
+      module.exports.getDiaChi(),
+      module.exports.getViTriThuc(),
+      module.exports.getTaiXe(),
+      module.exports.getXeBuyt(),
+      module.exports.getChuyenXe(),
+      module.exports.getLichTrinh(),
+      module.exports.getTuyenDuong(),
     ]);
 
     // ✅ Lấy điểm dừng với JOIN để có tọa độ
@@ -627,22 +315,26 @@ exports.getAllBusDataWithStations = async () => {
       });
     });
 
-    // ✅ Lấy phân bổ trạm xe với JOIN
-    const phanbotramxe = await new Promise((resolve, reject) => {
+    // ✅ Lấy phân bổ trạm xe với JOIN (sửa để tránh duplicate)
+    const chitiettuyenduong = await new Promise((resolve, reject) => {
       const query = `
-        SELECT 
-          pbtx.*,
+        SELECT DISTINCT
+          cttd.maChiTietTuyenDuong,
+          cttd.maTuyenDuong,
+          cttd.maDiemDung,
+          cttd.thuTu,
+          cttd.thoiGianDuKien,
           dd.tenDiemDung,
           dd.moTa as moTaDiemDung
-        FROM phanbotramxe pbtx
-        LEFT JOIN diemdung dd ON pbtx.maDiemDung = dd.maDiemDung
-        WHERE pbtx.trangThai = 'Active'
-        ORDER BY pbtx.maChuyenXe, pbtx.thuTuDon
+        FROM chitiettuyenduong cttd
+        LEFT JOIN diemdung dd ON cttd.maDiemDung = dd.maDiemDung
+        WHERE cttd.maTuyenDuong IN (SELECT DISTINCT maTuyenDuong FROM chuyenxe)
+        ORDER BY cttd.maTuyenDuong, cttd.thuTu
       `;
 
       db.query(query, (err, results) => {
         if (err) {
-          console.error("❌ Lỗi getPhanBoTramXe with JOIN:", err);
+          console.error("❌ Lỗi getChiTietTuyenDuong with JOIN:", err);
           reject(err);
         } else {
           console.log(`✅ Loaded ${results.length} phân bổ trạm xe`);
@@ -710,7 +402,7 @@ exports.getAllBusDataWithStations = async () => {
     console.log("  - Chuyến xe:", chuyenxe.length);
     console.log("  - Xe buýt:", xebuyt.length);
     console.log("  - Điểm dừng:", diemdung.length);
-    console.log("  - Phân bổ trạm xe:", phanbotramxe.length);
+    console.log("  - Phân bổ trạm xe:", chitiettuyenduong.length);
     console.log("  - Phân bổ học sinh trạm:", phanbohocsinhtram.length);
 
     // ✅ Log chi tiết học sinh tại mỗi trạm
@@ -740,9 +432,9 @@ exports.getAllBusDataWithStations = async () => {
       lichtrinh,
       tuyenduong,
       diemdung,
-      phanbotramxe,
+      chitiettuyenduong,
       phanbohocsinhtram,
-      vitrichuyenxe,
+      // vitrichuyenxe,
     };
   } catch (error) {
     console.error("❌ Error in getAllBusDataWithStations:", error);

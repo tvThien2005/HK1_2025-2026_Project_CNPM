@@ -438,7 +438,7 @@ export default function NotificationPage() {
       {/* Header */}
       <Container fluid>
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="my-2 mb-0">Quản lý thông báo</h2>
+          <h2 className="my-4">Quản lý thông báo</h2>
           <Button variant="primary" onClick={openCreateModal} size="sm">
             Gửi thông báo
           </Button>

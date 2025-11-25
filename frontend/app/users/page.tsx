@@ -24,7 +24,7 @@ interface User {
   ngayTao: string;
   capDo: string;
   trangThai: string;
-  tinhTrang: number;
+  block: number;
 }
 
 interface Student {
@@ -325,7 +325,7 @@ const UsersPage = () => {
         <title>Quản lý tài khoản | Admin Bus Tracking</title>
       </Head>
       <Container fluid>
-        <h2 className="my-2">Quản lý tài khoản</h2>
+        <h2 className="my-4">Quản lý tài khoản</h2>
 
         {/* Alert */}
         {alert.show && (
@@ -429,7 +429,7 @@ const UsersPage = () => {
                       >
                         <FaTrash size={20} />
                       </Button>
-                      {user.tinhTrang === 1 ? (
+                      {user.block === 1 ? (
                         <Button
                           variant="outline-danger"
                           size="sm"

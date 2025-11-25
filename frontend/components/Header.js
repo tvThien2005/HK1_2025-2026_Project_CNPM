@@ -13,7 +13,7 @@ import Button from "react-bootstrap/Button";
 import { FaUserCircle, FaSignOutAlt } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 
-const Header = () => {
+const Header = ({ onToggleSidebar, sidebarCollapsed }) => {
   const router = useRouter();
   const isLoggedIn = true;
   const userName = "Văn Thiện";
@@ -31,6 +31,15 @@ const Header = () => {
       className="border-bottom shadow-sm"
     >
       <Container fluid>
+        {/* Mobile Menu Button */}
+        <Button
+          variant="outline-dark"
+          className="d-md-none me-2"
+          onClick={onToggleSidebar}
+          size="sm"
+        >
+          ☰
+        </Button>
         <NavbarBrand href="#home">Smart School Bus Tracking</NavbarBrand>
         <NavbarToggle aria-controls="basic-navbar-nav" />
         <NavbarCollapse id="basic-navbar-nav" className="justify-content-end">

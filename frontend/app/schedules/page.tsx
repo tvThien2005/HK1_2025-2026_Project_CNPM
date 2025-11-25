@@ -346,7 +346,7 @@ const ScheduledPage = () => {
       </Head>
       <Container fluid>
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="my-2 mb-0">Quản lý lịch trình</h2>
+          <h2 className="my-4">Quản lý lịch trình</h2>
           <Button
             variant="primary"
             onClick={() => setShowAddModal(true)}

@@ -67,7 +67,7 @@ const AssignPage = () => {
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 6;
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -439,7 +439,7 @@ const AssignPage = () => {
       </Head>
       <Container fluid>
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="my-2 mb-0">Quản lý phân công</h2>
+          <h2 className="my-4">Quản lý phân công</h2>
           <Button variant="primary" onClick={handleShowAdd} size="sm">
             Tạo phân công
           </Button>
